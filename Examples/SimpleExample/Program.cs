@@ -5,7 +5,7 @@ using Ziks.WebServer;
 
 namespace SimpleExample
 {
-    public class Program : IProgram
+    public class Program
     {
         [STAThread]
         static void Main( string[] args )
@@ -15,7 +15,7 @@ namespace SimpleExample
             server.AddPrefix( "http://+:8080/" );
             server.AddControllers( Assembly.GetExecutingAssembly() );
 
-            Task.Run( server.Run );
+            Task.Run( () => server.Run() );
 
             Console.ReadKey( true );
 

@@ -82,6 +82,7 @@ namespace Ziks.WebServer
 
             _running = true;
             _stopEvent = new TaskCompletionSource<bool>();
+
             _listener.Start();
         }
 
