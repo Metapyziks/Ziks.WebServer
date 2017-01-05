@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Ziks.WebServer;
 
 namespace SimpleExample
@@ -24,10 +25,10 @@ namespace SimpleExample
 
             server.AddPrefix( "http://+:8080/" );
 
-            server.AddInterface<IProgram>( this );
+            server.Components.Add<IProgram>( this );
             server.AddControllers( Assembly.GetExecutingAssembly() );
 
-            server.Start();
+            Task.Run( () => server.Run() );
 
             Console.ReadKey( true );
 

@@ -1,17 +1,18 @@
 ﻿using System.Collections.Generic;
+using Ziks.WebServer;
 using Ziks.WebServer.Html;
 
-namespace Ziks.WebServer
+namespace SimpleExample
 {
     using static DocumentMethods;
     
-    [Prefix("/simple")]
+    [UriPrefix("/simple")]
     public class SimpleController : Controller
     {
         private readonly List<string> _history = new List<string>();
 
-        [Prefix("/echo")]
-        public Element GetEcho( string value )
+        [GetAction("/echo")]
+        public Element Echo( string value = "nothing" )
         {
             _history.Add( value );
 
@@ -24,9 +25,9 @@ namespace Ziks.WebServer
                 }
             };
         }
-        
-        [Prefix("/history")]
-        public Element GetHistory()
+
+        [GetAction("/history")]
+        public Element History()
         {
             return new html( lang => "en" ) {
                 new head {

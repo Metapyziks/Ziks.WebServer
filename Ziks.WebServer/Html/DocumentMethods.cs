@@ -109,6 +109,13 @@ namespace Ziks.WebServer.Html
         {
             public li( params Expression<AttribFunc>[] attribs ) : base( "li", attribs ) { }
         }
+
+        public static NamedElement br { get; } = new NamedElement( "br" );
+
+        public class code : ContainerElement
+        {
+            public code( params Expression<AttribFunc>[] attribs ) : base( "code", attribs ) { }
+        }
         // ReSharper restore InconsistentNaming
     }
 }
