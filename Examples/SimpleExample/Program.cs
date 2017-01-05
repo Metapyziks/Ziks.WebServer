@@ -12,8 +12,8 @@ namespace SimpleExample
         {
             var server = new Server();
 
-            server.AddPrefix( "http://+:8080/" );
-            server.AddControllers( Assembly.GetExecutingAssembly() );
+            server.Prefixes.Add( "http://+:8080/" );
+            server.Controllers.Add( Assembly.GetExecutingAssembly() );
 
             Task.Run( () => server.Run() );
 

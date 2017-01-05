@@ -10,70 +10,24 @@ namespace Ziks.WebServer
 {
     public class Server : IComponentContainer
     {
-        private struct BoundController
-        {
-            public readonly UriMatcher Matcher;
-            public readonly Func<Controller> Ctor;
-
-            public BoundController( UriMatcher matcher, Func<Controller> ctor )
-            {
-                Matcher = matcher;
-                Ctor = ctor;
-            }
-        }
-
         private readonly HttpListener _listener = new HttpListener();
 
         private readonly Dictionary<Guid, Session> _sessions = new Dictionary<Guid, Session>();
-        private readonly List<BoundController> _controllers = new List<BoundController>();
 
         private bool _running;
         private TaskCompletionSource<bool> _stopEvent;
 
         public HttpListenerPrefixCollection Prefixes => _listener.Prefixes;
-        public ComponentCollection Components { get; } = new ComponentCollection( true );
+
+        public ControllerMap Controllers { get; }
+        public ComponentCollection Components { get; }
 
         public Server()
         {
-            AddController<DefaultNotFoundController>( "/" );
-        }
+            Controllers = new ControllerMap( this );
+            Controllers.Add<DefaultNotFoundController>( "/" );
 
-        public void AddPrefix( string prefix )
-        {
-            _listener.Prefixes.Add( prefix );
-        }
-
-        public void AddControllers( Assembly assembly )
-        {
-            foreach ( var type in assembly.GetTypes() )
-            {
-                if ( !typeof (Controller).IsAssignableFrom( type ) ) continue;
-
-                var attribs = type.GetCustomAttributes<UriPrefixAttribute>().AsArray();
-                if ( attribs.Length == 0 ) continue;
-
-                var ctor = type.GetConstructor( Type.EmptyTypes );
-                if ( ctor == null ) continue;
-
-                var ctorCall = Expression.New( ctor );
-                var lambda = Expression.Lambda<Func<Controller>>( ctorCall ).Compile();
-
-                foreach ( var attrib in attribs )
-                {
-                    AddController( attrib.Value, lambda );
-                }
-            }
-        }
-
-        public void AddController<TController>( UriMatcher matcher )
-            where TController : Controller, new()
-        {
-            AddController( matcher, () => new TController() );
-        }
-
-        public void AddController( UriMatcher matcher, Func<Controller> ctor )
-        {
-            _controllers.Add( new BoundController( matcher, ctor ) );
+            Components = new ComponentCollection( true );
         }
 
         public void Start()
@@ -116,21 +70,14 @@ namespace Ziks.WebServer
             Controller controller;
             if ( !session.TryGetController( context.Request, out controller ) )
             {
-                for ( var i = _controllers.Count - 1; i >= 0; -- i )
-                {
-                    var bound = _controllers[i];
-                    if ( !bound.Matcher.Match( context.Request.Url ).Success ) continue;
+                var matched = Controllers
+                    .GetMatching( context.Request )
+                    .FirstOrDefault( matching => matching.Service( context, session ) );
 
-                    controller = bound.Ctor();
-                    controller.Initialize( bound.Matcher, this );
+                if ( matched == null ) throw new NotImplementedException();
 
-                    if ( !controller.Service( context, session ) ) continue;
-
-                    session.AddController( controller );
-                    return;
-                }
-
-                throw new NotImplementedException();
+                session.AddController( matched );
+                return;
             }
 
             controller.Service( context, session );

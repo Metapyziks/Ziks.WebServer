@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="Components.cs" />
     <Compile Include="ControllerActionMap.cs" />
+    <Compile Include="ControllerMap.cs" />
     <Compile Include="DefaultNotFoundController.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Session.cs" />
