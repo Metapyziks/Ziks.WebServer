@@ -9,7 +9,7 @@
     <projectUrl>https://github.com/Metapyziks/Ziks.WebServer</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>None specified.</releaseNotes>
+    <releaseNotes>$releaseNotes$</releaseNotes>
     <copyright>Copyright 2017</copyright>
     <tags>Http HttpListener WebServer</tags>
   </metadata>
