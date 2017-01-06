@@ -41,6 +41,9 @@ namespace Ziks.WebServer.Html
 
     public abstract class Element : IHtmlSerializable
     {
+        internal virtual bool AllowIndentation => true;
+        internal virtual bool SuggestNewlineWhenSerialized => false;
+
         public static implicit operator Element( string value )
         {
             return new StringElement( value );
@@ -54,8 +57,37 @@ namespace Ziks.WebServer.Html
         public abstract void Serialize( IHtmlSerializer serializer );
     }
 
+    public class EntityElement : Element
+    {
+        public static EntityElement Nbsp { get; } = new EntityElement( "nbsp" );
+
+        public string Value { get; set; }
+
+        public EntityElement( string value )
+        {
+            Value = value;
+        }
+
+        public EntityElement( int code )
+        {
+            Value = $"#{code}";
+        }
+
+        public override string ToString()
+        {
+            return $"&{Value};";
+        }
+
+        public override void Serialize( IHtmlSerializer serializer )
+        {
+            serializer.Write( ToString() );
+        }
+    }
+
     public class StringElement : Element
     {
+        internal override bool SuggestNewlineWhenSerialized => Value.Contains( '\n' );
+
         public string Value { get; set; }
 
         public StringElement( string value )
@@ -79,6 +111,8 @@ namespace Ziks.WebServer.Html
         private readonly List<Attribute> _attributes = new List<Attribute>();
 
         public IEnumerable<Attribute> Attributes => _attributes;
+
+        internal override bool SuggestNewlineWhenSerialized => Name == "br";
 
         public string AttributeString => string.Join( " ", _attributes );
 
@@ -130,7 +164,7 @@ namespace Ziks.WebServer.Html
 
     public class ContainerElement : NamedElement, IEchoDestination
     {
-        private readonly List<Element> _children = new List<Element>(); 
+        private readonly List<Element> _children = new List<Element>();
         
         public IEnumerable<Element> Children => _children;
         public IEnumerable<NamedElement> NamedChildren => _children.OfType<NamedElement>();
@@ -144,6 +178,8 @@ namespace Ziks.WebServer.Html
 
             return this;
         };
+
+        internal override bool SuggestNewlineWhenSerialized => true;
 
         public ContainerElement( string name, params Expression<AttribFunc>[] attribs )
             : base( name, attribs )
@@ -179,14 +215,14 @@ namespace Ziks.WebServer.Html
         {
             base.Serialize( serializer );
 
-            var oneLiner = _children.All( x => !(x is ContainerElement) );
+            var oneLiner = _children.All( x => !x.SuggestNewlineWhenSerialized ) && _children.Any( x => x is StringElement );
 
-            if ( !oneLiner ) serializer.BeginBlock();
+            if ( !oneLiner ) serializer.BeginBlock( AllowIndentation );
 
             foreach ( var element in Children )
             {
                 element.Serialize( serializer );
-                if ( !oneLiner ) serializer.SuggestNewline();
+                if ( element.SuggestNewlineWhenSerialized ) serializer.SuggestNewline();
             }
             
             if ( !oneLiner ) serializer.EndBlock();

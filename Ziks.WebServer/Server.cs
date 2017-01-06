@@ -26,6 +26,8 @@ namespace Ziks.WebServer
             Controllers.Add<DefaultNotFoundController>( "/" );
 
             Components = new ComponentCollection( true );
+
+            AppDomain.CurrentDomain.DomainUnload += (sender, e) => Stop();
         }
 
         public void Start()
@@ -38,16 +40,16 @@ namespace Ziks.WebServer
             _listener.Start();
         }
 
-        public async void Run()
+        public void Run()
         {
             Start();
 
             while ( true )
             {
                 var contextTask = _listener.GetContextAsync();
-                var completed = await Task.WhenAny( contextTask, _stopEvent.Task );
+                Task.WhenAny( contextTask, _stopEvent.Task ).Wait();
 
-                if ( completed != contextTask ) break;
+                if ( !contextTask.IsCompleted ) break;
 
                 OnGetContext( contextTask.Result );
             }
@@ -64,21 +66,12 @@ namespace Ziks.WebServer
                 context.Response.SetSessionGuid( session.Guid );
                 _sessions.Add( session.Guid, session );
             }
+            
+            var matched = Controllers
+                .GetMatching( session, context.Request )
+                .FirstOrDefault( matching => matching.Service( context, session ) );
 
-            Controller controller;
-            if ( !session.TryGetController( context.Request, out controller ) )
-            {
-                var matched = Controllers
-                    .GetMatching( context.Request )
-                    .FirstOrDefault( matching => matching.Service( context, session ) );
-
-                if ( matched == null ) throw new NotImplementedException();
-
-                session.AddController( matched );
-                return;
-            }
-
-            controller.Service( context, session );
+            if ( matched == null ) throw new NotImplementedException();
         }
 
         public void Stop()

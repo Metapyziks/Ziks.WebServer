@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Web;
 using MimeTypes;
 using Newtonsoft.Json;
@@ -11,7 +12,34 @@ using Ziks.WebServer.Html;
 
 namespace Ziks.WebServer
 {
+    using static DocumentHelper;
+
     public sealed class ResponseWriterAttribute : System.Attribute { }
+
+    public class ControllerActionException : Exception
+    {
+        public HttpListenerRequest Request { get; }
+        public bool RequestHandled { get; }
+        public HttpStatusCode StatusCode { get; }
+
+        public ControllerActionException( HttpListenerRequest request, bool handled,
+            HttpStatusCode statusCode, string message )
+            : base( message )
+        {
+            Request = request;
+            RequestHandled = handled;
+            StatusCode = statusCode;
+        }
+
+        public ControllerActionException( HttpListenerRequest request, bool handled,
+            HttpStatusCode statusCode, string message, Exception inner )
+            : base( message, inner )
+        {
+            Request = request;
+            RequestHandled = handled;
+            StatusCode = statusCode;
+        }
+    }
 
     public abstract class Controller
     {
@@ -22,7 +50,10 @@ namespace Ziks.WebServer
         private string _entityBodyString;
         private NameValueCollection _formData;
 
-        public UriMatcher UriMatcher { get; private set; }
+        private UrlMatch _controllerMatch;
+        private UrlMatch _actionMatch;
+
+        public UrlMatcher UrlMatcher { get; private set; }
 
         public DateTime LastRequest { get; private set; }
         public bool IsAlive => true;
@@ -34,7 +65,24 @@ namespace Ziks.WebServer
         protected internal HttpListenerRequest Request { get; private set; }
         protected internal HttpListenerResponse Response { get; private set; }
 
-        protected Session Session { get; private set; }
+        protected internal HttpMethod HttpMethod { get; private set; }
+        protected internal Session Session { get; private set; }
+
+        protected bool IsHead => HttpMethod == HttpMethod.Head;
+        protected bool IsGetOrHead => HttpMethod == HttpMethod.Get || IsHead;
+        protected bool IsPost => HttpMethod == HttpMethod.Post;
+
+        protected Uri MatchedUrl
+        {
+            get
+            {
+                var min = Math.Min( _controllerMatch.Index, _actionMatch.Index );
+                var max = Math.Max( _controllerMatch.EndIndex, _actionMatch.EndIndex );
+
+                return new Uri( new Uri( Request.Url.GetLeftPart( UriPartial.Authority ) ),
+                    Request.Url.AbsolutePath.Substring( min, max - min ) );
+            }
+        }
 
         public bool HasFormData => HasEntityBody && Request.ContentType == FormContentType;
         public bool HasEntityBody => Request.HasEntityBody;
@@ -44,9 +92,9 @@ namespace Ziks.WebServer
             _actionMap = ControllerActionMap.GetActionMap( GetType() );
         }
 
-        internal void Initialize( UriMatcher matcher, Server server )
+        internal void Initialize( UrlMatcher matcher, Server server )
         {
-            UriMatcher = matcher;
+            UrlMatcher = matcher;
             Server = server;
             
             LastRequest = DateTime.UtcNow;
@@ -55,17 +103,83 @@ namespace Ziks.WebServer
         internal bool Service( HttpListenerContext context, Session session )
         {
             Debug.Assert( session == Session || Session == null );
+            if ( Session == null ) session.AddController( this );
 
             Request = context.Request;
             Response = context.Response;
             Session = session;
+
+            switch ( Request.HttpMethod )
+            {
+                case "GET": HttpMethod = HttpMethod.Get; break;
+                case "POST": HttpMethod = HttpMethod.Post; break;
+                case "HEAD": HttpMethod = HttpMethod.Head; break;
+                case "DELETE": HttpMethod = HttpMethod.Delete; break;
+                case "OPTIONS": HttpMethod = HttpMethod.Options; break;
+                case "PUT": HttpMethod = HttpMethod.Put; break;
+                case "TRACE": HttpMethod = HttpMethod.Trace; break;
+                default: HttpMethod = null; break;
+            }
 
             LastRequest = DateTime.UtcNow;
 
             _entityBodyString = null;
             _formData = null;
 
-            return _actionMap.TryInvokeAction( this, context.Request );
+            _controllerMatch = UrlMatcher.Match( Request.Url );
+            _actionMatch = UrlMatch.Failure;
+
+            try
+            {
+                return _actionMap.TryInvokeAction( this, context.Request );
+            }
+            catch ( ControllerActionException e )
+            {
+                if ( !e.RequestHandled ) return false;
+
+                OnUnhandledException( e );
+                return true;
+            }
+            catch ( Exception e )
+            {
+                OnUnhandledException( new ControllerActionException( Request, false, HttpStatusCode.InternalServerError, e.Message, e ) );
+                return true;
+            }
+        }
+
+        internal void SetMatchedActionUrl( UrlMatch match )
+        {
+            _actionMatch = match;
+        }
+
+        protected ControllerActionException NotFoundException( bool handled = false )
+        {
+            var message = $"The requested resource was not found.";
+            throw new ControllerActionException( Request, handled, HttpStatusCode.NotFound, message );
+        }
+
+        protected virtual void OnUnhandledException( ControllerActionException e )
+        {
+            Response.StatusCode = (int) e.StatusCode;
+
+            var title = $"{(int) e.StatusCode}: {e.StatusCode}";
+
+            OnServiceHtml( new html
+            {
+                new head
+                {
+                    new title {title}
+                },
+                new body
+                {
+                    new h2 {title},
+                    "Request:", nbsp, new code {Request.Url.ToString()}, br,
+                    "Message:", nbsp, new code {e.Message}, br,
+                    If( (int) e.StatusCode >= 500 && (int) e.StatusCode < 600 && e.InnerException != null,
+                        new code (style=> "padding:8px;white-space:pre-wrap;display:block;") { e.ToString() }
+                    )
+                }
+            } );
         }
 
         [ResponseWriter]

@@ -49,14 +49,14 @@ namespace Ziks.WebServer
 
         private struct BoundAction
         {
-            public readonly UriMatcher Matcher;
-            public readonly HttpMethod Method;
+            public readonly UrlMatcher Matcher;
+            public readonly HttpMethod HttpMethod;
             public readonly ControllerAction Action;
 
-            public BoundAction( UriMatcher matcher, HttpMethod method, ControllerAction action )
+            public BoundAction( UrlMatcher matcher, HttpMethod httpMethod, ControllerAction action )
             {
                 Matcher = matcher;
-                Method = method;
+                HttpMethod = httpMethod;
                 Action = action;
             }
         }
@@ -245,20 +245,28 @@ namespace Ziks.WebServer
             }
         }
 
+        private static bool IsMatchingHttpMethod( HttpMethod action, HttpMethod request )
+        {
+            return action == request || action == HttpMethod.Get && request == HttpMethod.Head;
+        }
+
         public bool TryInvokeAction( Controller controller, HttpListenerRequest request )
         {
-            var prefixMatch = controller.UriMatcher.Match( request.Url );
+            var prefixMatch = controller.UrlMatcher.Match( request.Url );
             Debug.Assert( prefixMatch.Success );
 
             var lastChar = request.Url.AbsolutePath[prefixMatch.Index + prefixMatch.Length - 1];
-            if ( lastChar == '/' ) prefixMatch = new UriMatch( prefixMatch.Index, prefixMatch.Length - 1 );
+            if ( lastChar == '/' ) prefixMatch = new UrlMatch( prefixMatch.Index, prefixMatch.Length - 1 );
 
             for ( var i = _actions.Count - 1; i >= 0; --i )
             {
                 var bound = _actions[i];
-                if ( bound.Method.Method != request.HttpMethod ) continue;
-                if ( !bound.Matcher.Match( request.Url, prefixMatch.EndIndex ).Success ) continue;
+                if ( !IsMatchingHttpMethod( bound.HttpMethod, controller.HttpMethod ) ) continue;
 
+                var match = bound.Matcher.Match( request.Url, prefixMatch.EndIndex );
+                if ( !match.Success ) continue;
+
+                controller.SetMatchedActionUrl( match );
                 bound.Action( controller );
                 return true;
             }

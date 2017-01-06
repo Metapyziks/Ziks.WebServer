@@ -1,6 +1,6 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
-using System.Threading.Tasks;
 using Ziks.WebServer;
 
 namespace SimpleExample
@@ -12,14 +12,15 @@ namespace SimpleExample
         {
             var server = new Server();
 
+            var assemblyDir = Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location );
+            var resourcesDir = Path.Combine( assemblyDir, "..", "..", "Resources" );
+
             server.Prefixes.Add( "http://+:8080/" );
+
+            server.Controllers.Add( "/", () => new StaticFileController( resourcesDir ) );
             server.Controllers.Add( Assembly.GetExecutingAssembly() );
 
-            Task.Run( () => server.Run() );
-
-            Console.ReadKey( true );
-
-            server.Stop();
+            server.Run();
         }
     }
 }

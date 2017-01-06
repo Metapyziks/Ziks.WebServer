@@ -28,15 +28,14 @@ namespace Ziks.WebServer
             return request.GetSessionGuid() == Guid;
         }
 
-        public bool TryGetController( HttpListenerRequest request, out Controller controller )
+        public bool TryGetController( UrlMatcher matcher, out Controller controller )
         {
             foreach ( var active in _controllers )
             {
-                if ( active.UriMatcher.Match( request.Url ).Success )
-                {
-                    controller = active;
-                    return true;
-                }
+                if ( active.UrlMatcher != matcher ) continue;
+
+                controller = active;
+                return true;
             }
 
             controller = null;

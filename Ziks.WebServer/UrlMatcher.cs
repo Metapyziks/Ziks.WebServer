@@ -3,9 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace Ziks.WebServer
 {
-    public struct UriMatch
+    public struct UrlMatch
     {
-        public static readonly UriMatch Failure = new UriMatch( 0, 0 );
+        public static readonly UrlMatch Failure = new UrlMatch( 0, 0 );
 
         public bool Success => Length > 0;
         public int EndIndex => Index + Length;
@@ -13,26 +13,26 @@ namespace Ziks.WebServer
         public readonly int Index;
         public readonly int Length;
 
-        public UriMatch( int index, int length )
+        public UrlMatch( int index, int length )
         {
             Index = index;
             Length = length;
         }
     }
 
-    public abstract class UriMatcher
+    public abstract class UrlMatcher
     {
-        public static implicit operator UriMatcher( string prefix )
+        public static implicit operator UrlMatcher( string prefix )
         {
             return new PrefixMatcher( prefix );
         }
         
-        public static implicit operator UriMatcher( Regex regex )
+        public static implicit operator UrlMatcher( Regex regex )
         {
             return new RegexMatcher( regex );
         }
 
-        public abstract UriMatch Match( Uri uri, int startIndex = 0 );
+        public abstract UrlMatch Match( Uri uri, int startIndex = 0 );
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Method)]
@@ -72,7 +72,7 @@ namespace Ziks.WebServer
             : base ( prefix ) { }
     }
 
-    public class PrefixMatcher : UriMatcher
+    public class PrefixMatcher : UrlMatcher
     {
         public string Prefix { get; }
 
@@ -81,21 +81,21 @@ namespace Ziks.WebServer
             Prefix = prefix;
         }
 
-        public override UriMatch Match( Uri uri, int startIndex = 0 )
+        public override UrlMatch Match( Uri uri, int startIndex = 0 )
         {
             var absolute = uri.AbsolutePath;
-            if ( Prefix.Length > absolute.Length + startIndex ) return UriMatch.Failure;
+            if ( Prefix.Length > absolute.Length - startIndex ) return UrlMatch.Failure;
 
             for ( var i = 0; i < Prefix.Length; ++i )
             {
-                if ( absolute[i + startIndex] != Prefix[i] ) return UriMatch.Failure;
+                if ( absolute[i + startIndex] != Prefix[i] ) return UrlMatch.Failure;
             }
 
-            return new UriMatch( startIndex, Prefix.Length );
+            return new UrlMatch( startIndex, Prefix.Length );
         }
     }
 
-    public class RegexMatcher : UriMatcher
+    public class RegexMatcher : UrlMatcher
     {
         public Regex Regex { get; }
 
@@ -104,12 +104,12 @@ namespace Ziks.WebServer
             Regex = regex;
         }
 
-        public override UriMatch Match( Uri uri, int startIndex = 0 )
+        public override UrlMatch Match( Uri uri, int startIndex = 0 )
         {
             var match = Regex.Match( uri.AbsolutePath, startIndex );
             return match.Success && match.Index == startIndex
-                ? new UriMatch( startIndex, match.Length )
-                : UriMatch.Failure;
+                ? new UrlMatch( startIndex, match.Length )
+                : UrlMatch.Failure;
         }
     }
 }

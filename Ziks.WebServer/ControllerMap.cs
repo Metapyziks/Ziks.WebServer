@@ -10,10 +10,10 @@ namespace Ziks.WebServer
     {
         private struct BoundController
         {
-            public readonly UriMatcher Matcher;
+            public readonly UrlMatcher Matcher;
             public readonly Func<Controller> Ctor;
 
-            public BoundController( UriMatcher matcher, Func<Controller> ctor )
+            public BoundController( UrlMatcher matcher, Func<Controller> ctor )
             {
                 Matcher = matcher;
                 Ctor = ctor;
@@ -50,26 +50,30 @@ namespace Ziks.WebServer
             }
         }
 
-        public void Add<TController>( UriMatcher matcher )
+        public void Add<TController>( UrlMatcher matcher )
             where TController : Controller, new()
         {
             Add( matcher, () => new TController() );
         }
 
-        public void Add( UriMatcher matcher, Func<Controller> ctor )
+        public void Add( UrlMatcher matcher, Func<Controller> ctor )
         {
             _controllers.Add( new BoundController( matcher, ctor ) );
         }
 
-        public IEnumerable<Controller> GetMatching( HttpListenerRequest request )
+        public IEnumerable<Controller> GetMatching( Session session, HttpListenerRequest request )
         {
             for ( var i = _controllers.Count - 1; i >= 0; -- i )
             {
                 var bound = _controllers[i];
                 if ( !bound.Matcher.Match( request.Url ).Success ) continue;
 
-                var controller = bound.Ctor();
-                controller.Initialize( bound.Matcher, _server );
+                Controller controller;
+                if ( !session.TryGetController( bound.Matcher, out controller ) )
+                {
+                    controller = bound.Ctor();
+                    controller.Initialize( bound.Matcher, _server );
+                }
 
                 yield return controller;
             }

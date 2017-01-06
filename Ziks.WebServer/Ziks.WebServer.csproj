@@ -61,10 +61,12 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="Controller.cs" />
-    <Compile Include="UriMatcher.cs" />
+    <Compile Include="StaticFileController.cs" />
+    <Compile Include="UrlMatcher.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Ziks.WebServer.nuspec" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

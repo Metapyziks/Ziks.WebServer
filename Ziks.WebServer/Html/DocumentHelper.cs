@@ -52,9 +52,12 @@ namespace Ziks.WebServer.Html
             };
         }
 
-        public static Element If( bool condition, Element element )
+        public static Action If( bool condition, Element element )
         {
-            return condition ? element : null;
+            return () =>
+            {
+                if ( condition ) Echo( element );
+            };
         }
 
         public static NamedElement doctype( string value )
@@ -100,6 +103,36 @@ namespace Ziks.WebServer.Html
             public a( params Expression<AttribFunc>[] attribs ) : base( "a", attribs ) { }
         }
         
+        public class h1 : ContainerElement
+        {
+            public h1( params Expression<AttribFunc>[] attribs ) : base( "h1", attribs ) { }
+        }
+        
+        public class h2 : ContainerElement
+        {
+            public h2( params Expression<AttribFunc>[] attribs ) : base( "h2", attribs ) { }
+        }
+        
+        public class h3 : ContainerElement
+        {
+            public h3( params Expression<AttribFunc>[] attribs ) : base( "h3", attribs ) { }
+        }
+        
+        public class h4 : ContainerElement
+        {
+            public h4( params Expression<AttribFunc>[] attribs ) : base( "h4", attribs ) { }
+        }
+        
+        public class h5 : ContainerElement
+        {
+            public h5( params Expression<AttribFunc>[] attribs ) : base( "h5", attribs ) { }
+        }
+        
+        public class h6 : ContainerElement
+        {
+            public h6( params Expression<AttribFunc>[] attribs ) : base( "h6", attribs ) { }
+        }
+        
         public class p : ContainerElement
         {
             public p( params Expression<AttribFunc>[] attribs ) : base( "p", attribs ) { }
@@ -114,11 +147,13 @@ namespace Ziks.WebServer.Html
         {
             public li( params Expression<AttribFunc>[] attribs ) : base( "li", attribs ) { }
         }
-
+        
+        public static EntityElement nbsp => EntityElement.Nbsp;
         public static NamedElement br { get; } = new NamedElement( "br" );
 
         public class code : ContainerElement
         {
+            internal override bool AllowIndentation => false;
             public code( params Expression<AttribFunc>[] attribs ) : base( "code", attribs ) { }
         }
         

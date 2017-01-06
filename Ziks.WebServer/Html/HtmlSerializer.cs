@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -13,7 +14,7 @@ namespace Ziks.WebServer.Html
     {
         void Write( string value );
         void SuggestNewline();
-        void BeginBlock();
+        void BeginBlock( bool allowIndentation = true );
         void EndBlock();
     }
 
@@ -26,6 +27,7 @@ namespace Ziks.WebServer.Html
         public bool OwnsWriter { get; }
 
         private readonly StringBuilder _lineBuffer = new StringBuilder();
+        private readonly Stack<bool> _indentationAllowed = new Stack<bool>(); 
 
         private bool _lineOverflow;
         private int _blockDepth;
@@ -51,10 +53,13 @@ namespace Ziks.WebServer.Html
         {
             if ( _lineBuffer.Length == 0 ) return;
 
-            var indent = (_blockDepth + (_lineOverflow ? 1 : 0))*IndentationWidth;
-            for ( var i = 0; i < indent; ++i )
+            if ( _indentationAllowed.Count == 0 || _indentationAllowed.Peek() )
             {
-                BaseWriter.Write( " " );
+                var indent = (_blockDepth + (_lineOverflow ? 1 : 0))*IndentationWidth;
+                for ( var i = 0; i < indent; ++i )
+                {
+                    BaseWriter.Write( " " );
+                }
             }
 
             BaseWriter.Write( _lineBuffer );
@@ -79,14 +84,16 @@ namespace Ziks.WebServer.Html
             _lineOverflow = false;
         }
 
-        public void BeginBlock()
+        public void BeginBlock( bool allowIndentation = true )
         {
             SuggestNewline();
             ++_blockDepth;
+            _indentationAllowed.Push( allowIndentation );
         }
 
         public void EndBlock()
         {
+            _indentationAllowed.Pop();
             SuggestNewline();
             --_blockDepth;
         }
