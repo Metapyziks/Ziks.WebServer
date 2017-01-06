@@ -82,6 +82,17 @@ namespace Ziks.WebServer.Html
         {
             public body( params Expression<AttribFunc>[] attribs ) : base( "body", attribs ) { }
         }
+
+        public class script : ContainerElement
+        {
+            internal override bool Verbatim => true;
+            public script( params Expression<AttribFunc>[] attribs ) : base( "script", attribs ) { }
+        }
+
+        public class link : NamedElement
+        {
+            public link( params Expression<AttribFunc>[] attribs ) : base( "link", attribs ) { }
+        }
         
         public class div : ContainerElement
         {

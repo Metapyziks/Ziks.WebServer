@@ -48,6 +48,8 @@ namespace Ziks.WebServer
 
     public abstract class ControllerActionAttribute : PrefixAttribute
     {
+        public bool MatchAllUrl { get; set; } = true;
+
         protected ControllerActionAttribute( string prefix = "/" )
             : base ( prefix ) { }
 

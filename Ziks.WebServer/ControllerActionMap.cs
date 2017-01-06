@@ -50,12 +50,14 @@ namespace Ziks.WebServer
         private struct BoundAction
         {
             public readonly UrlMatcher Matcher;
+            public readonly bool MatchAllUrl;
             public readonly HttpMethod HttpMethod;
             public readonly ControllerAction Action;
 
-            public BoundAction( UrlMatcher matcher, HttpMethod httpMethod, ControllerAction action )
+            public BoundAction( UrlMatcher matcher, bool matchAllUrl, HttpMethod httpMethod, ControllerAction action )
             {
                 Matcher = matcher;
+                MatchAllUrl = matchAllUrl;
                 HttpMethod = httpMethod;
                 Action = action;
             }
@@ -240,7 +242,7 @@ namespace Ziks.WebServer
                     var httpMethod = attrib is GetAttribute ? HttpMethod.Get
                         : attrib is PostAttribute ? HttpMethod.Post : null;
 
-                    _actions.Add( new BoundAction( matcher, httpMethod, action ) );
+                    _actions.Add( new BoundAction( matcher, attrib.MatchAllUrl, httpMethod, action ) );
                 }
             }
         }
@@ -265,6 +267,7 @@ namespace Ziks.WebServer
 
                 var match = bound.Matcher.Match( request.Url, prefixMatch.EndIndex );
                 if ( !match.Success ) continue;
+                if ( bound.MatchAllUrl && match.EndIndex < request.Url.AbsolutePath.Length ) continue;
 
                 controller.SetMatchedActionUrl( match );
                 bound.Action( controller );

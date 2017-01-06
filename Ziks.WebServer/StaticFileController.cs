@@ -14,8 +14,8 @@ namespace Ziks.WebServer
         {
             RootPath = new FileInfo( rootPath ).FullName;
         }
-        
-        [Get]
+
+        [Get( MatchAllUrl = false )]
         public void Get()
         {
             var ext = Path.GetExtension( Request.Url.AbsolutePath );
@@ -38,9 +38,9 @@ namespace Ziks.WebServer
             if ( !File.Exists( filePath ) ) throw NotFoundException();
 
             var info = new FileInfo( filePath );
-            
+
             DateTime time;
-            
+
             Response.ContentType = MimeTypeMap.GetMimeType( ext );
             Response.Headers.Add( "Cache-Control", "public, max-age=31556736" );
             Response.Headers.Add( "Last-Modified", info.LastWriteTimeUtc.ToString( "R" ) );
@@ -49,7 +49,7 @@ namespace Ziks.WebServer
             if ( modifiedSince != null && DateTime.TryParseExact( modifiedSince, "R",
                 CultureInfo.InvariantCulture.DateTimeFormat,
                 DateTimeStyles.AdjustToUniversal, out time )
-                && time < info.LastWriteTimeUtc )
+                 && time < info.LastWriteTimeUtc )
             {
                 Response.StatusCode = (int) HttpStatusCode.NotModified;
                 Response.OutputStream.Close();

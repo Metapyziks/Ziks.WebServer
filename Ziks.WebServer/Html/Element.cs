@@ -41,7 +41,6 @@ namespace Ziks.WebServer.Html
 
     public abstract class Element : IHtmlSerializable
     {
-        internal virtual bool AllowIndentation => true;
         internal virtual bool SuggestNewlineWhenSerialized => false;
 
         public static implicit operator Element( string value )
@@ -178,7 +177,9 @@ namespace Ziks.WebServer.Html
 
             return this;
         };
-
+        
+        internal virtual bool AllowIndentation => true;
+        internal virtual bool Verbatim => false;
         internal override bool SuggestNewlineWhenSerialized => true;
 
         public ContainerElement( string name, params Expression<AttribFunc>[] attribs )
@@ -221,8 +222,9 @@ namespace Ziks.WebServer.Html
 
             foreach ( var element in Children )
             {
-                element.Serialize( serializer );
-                if ( element.SuggestNewlineWhenSerialized ) serializer.SuggestNewline();
+                if ( Verbatim && element is StringElement ) serializer.Write( ((StringElement) element).Value );
+                else element.Serialize( serializer );
+                if ( element.SuggestNewlineWhenSerialized || Verbatim ) serializer.SuggestNewline();
             }
             
             if ( !oneLiner ) serializer.EndBlock();
