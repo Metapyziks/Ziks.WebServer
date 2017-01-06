@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
+using System.Net;
 using MimeTypes;
 
 namespace Ziks.WebServer
@@ -35,7 +37,24 @@ namespace Ziks.WebServer
 
             if ( !File.Exists( filePath ) ) throw NotFoundException();
 
+            var info = new FileInfo( filePath );
+            
+            DateTime time;
+            
             Response.ContentType = MimeTypeMap.GetMimeType( ext );
+            Response.Headers.Add( "Cache-Control", "public, max-age=31556736" );
+            Response.Headers.Add( "Last-Modified", info.LastWriteTimeUtc.ToString( "R" ) );
+
+            var modifiedSince = Request.Headers["If-Modified-Since"];
+            if ( modifiedSince != null && DateTime.TryParseExact( modifiedSince, "R",
+                CultureInfo.InvariantCulture.DateTimeFormat,
+                DateTimeStyles.AdjustToUniversal, out time )
+                && time < info.LastWriteTimeUtc )
+            {
+                Response.StatusCode = (int) HttpStatusCode.NotModified;
+                Response.OutputStream.Close();
+                return;
+            }
 
             using ( var stream = File.Open( filePath, FileMode.Open, FileAccess.Read, FileShare.Read ) )
             {
