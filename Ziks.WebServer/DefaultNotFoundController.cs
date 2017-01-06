@@ -1,13 +1,12 @@
-﻿using System;
-using Ziks.WebServer.Html;
+﻿using Ziks.WebServer.Html;
 
 namespace Ziks.WebServer
 {
-    using static DocumentMethods;
+    using static DocumentHelper;
 
     internal class DefaultNotFoundController : Controller
     {
-        [GetAction]
+        [Get]
         public Element Get()
         {
             Response.StatusCode = 404;

@@ -158,9 +158,9 @@ namespace Ziks.WebServer.Html
         
         public void Add( Action action )
         {
-            DocumentMethods.PushEchoDestination( this );
+            DocumentHelper.PushEchoDestination( this );
             action();
-            DocumentMethods.PopEchoDestination();
+            DocumentHelper.PopEchoDestination();
         }
 
         public override string ToString()

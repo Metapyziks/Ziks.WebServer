@@ -55,7 +55,7 @@
     <Compile Include="DefaultNotFoundController.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Session.cs" />
-    <Compile Include="Html\DocumentMethods.cs" />
+    <Compile Include="Html\DocumentHelper.cs" />
     <Compile Include="Html\Element.cs" />
     <Compile Include="Html\HtmlSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

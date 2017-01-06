@@ -36,31 +36,39 @@ namespace Ziks.WebServer
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Method)]
-    public class UriPrefixAttribute : Attribute
+    public class PrefixAttribute : Attribute
     {
         public string Value { get; set; }
 
-        public UriPrefixAttribute( string value )
+        public PrefixAttribute( string value )
         {
             Value = value;
         }
     }
 
-    public abstract class ControllerActionAttribute : UriPrefixAttribute
+    public abstract class ControllerActionAttribute : PrefixAttribute
     {
         protected ControllerActionAttribute( string prefix = "/" )
             : base ( prefix ) { }
+
+        public abstract ActionParameterMethod DefaultParameterMethod { get; }
     }
 
-    public class GetActionAttribute : ControllerActionAttribute
+    public class GetAttribute : ControllerActionAttribute
     {
-        public GetActionAttribute( string prefix = "/" )
+        public override ActionParameterMethod DefaultParameterMethod => ActionParameterMethod.Query;
+
+        public GetAttribute( string prefix = "/" )
             : base ( prefix ) { }
     }
 
-    public class PostActionAttribute : ControllerActionAttribute
+    public class PostAttribute : ControllerActionAttribute
     {
-        public PostActionAttribute( string prefix = "/" )
+        public bool Form { get; set; } = true;
+        
+        public override ActionParameterMethod DefaultParameterMethod => Form ? ActionParameterMethod.Form : ActionParameterMethod.Query;
+
+        public PostAttribute( string prefix = "/" )
             : base ( prefix ) { }
     }
 

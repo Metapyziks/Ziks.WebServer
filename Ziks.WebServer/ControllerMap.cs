@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ziks.WebServer
 {
@@ -37,7 +34,7 @@ namespace Ziks.WebServer
             {
                 if ( !typeof (Controller).IsAssignableFrom( type ) ) continue;
 
-                var attribs = type.GetCustomAttributes<UriPrefixAttribute>().AsArray();
+                var attribs = type.GetCustomAttributes<PrefixAttribute>().AsArray();
                 if ( attribs.Length == 0 ) continue;
 
                 var ctor = type.GetConstructor( Type.EmptyTypes );
