@@ -8,20 +8,40 @@ namespace Ziks.WebServer
 {
     public sealed class ControllerMap
     {
-        private struct BoundController
+        private class BoundController : IComparable<BoundController>
         {
             public readonly UrlMatcher Matcher;
+            public readonly float Priority;
             public readonly Func<Controller> Ctor;
 
-            public BoundController( UrlMatcher matcher, Func<Controller> ctor )
+            private readonly string _protoName;
+
+            public BoundController( UrlMatcher matcher, float priority, Func<Controller> ctor )
             {
                 Matcher = matcher;
+                Priority = priority;
                 Ctor = ctor;
+
+                _protoName = ctor().ToString();
+            }
+
+            public int CompareTo( BoundController other )
+            {
+                var compared = Matcher.CompareTo( other.Matcher );
+                if ( compared != 0 ) return compared;
+                return Priority > other.Priority ? 1 : Priority < other.Priority ? -1 : 0;
+            }
+
+            public override string ToString()
+            {
+                return $"{Matcher} => {_protoName}";
             }
         }
         
         private readonly List<BoundController> _controllers = new List<BoundController>();
         private readonly Server _server;
+
+        private bool _sorted;
 
         internal ControllerMap( Server server )
         {
@@ -45,24 +65,41 @@ namespace Ziks.WebServer
 
                 foreach ( var attrib in attribs )
                 {
-                    Add( attrib.Value, lambda );
+                    var matcher = UrlMatcher.Parse( attrib.Value );
+                    Add( matcher, attrib.Priority, lambda );
                 }
             }
         }
 
-        public void Add<TController>( UrlMatcher matcher )
+        public void Add<TController>( UrlMatcher matcher, float priority = 0f )
             where TController : Controller, new()
         {
-            Add( matcher, () => new TController() );
+            Add( matcher, priority, () => new TController() );
         }
 
         public void Add( UrlMatcher matcher, Func<Controller> ctor )
         {
-            _controllers.Add( new BoundController( matcher, ctor ) );
+            Add( matcher, 0f, ctor );
+        }
+
+        public void Add( UrlMatcher matcher, float priority, Func<Controller> ctor )
+        {
+            _controllers.Add( new BoundController( matcher, priority, ctor ) );
+            _sorted = false;
+        }
+
+        private void Sort()
+        {
+            if ( _sorted ) return;
+
+            _controllers.Sort();
+            _sorted = true;
         }
 
         public IEnumerable<Controller> GetMatching( Session session, HttpListenerRequest request )
         {
+            Sort();
+
             for ( var i = _controllers.Count - 1; i >= 0; -- i )
             {
                 var bound = _controllers[i];

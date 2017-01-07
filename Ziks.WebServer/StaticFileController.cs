@@ -8,6 +8,8 @@ namespace Ziks.WebServer
 {
     public class StaticFileController : Controller
     {
+        public const float DefaultPriority = -100f;
+
         public string RootPath { get; set; }
 
         public StaticFileController( string rootPath )
@@ -63,6 +65,11 @@ namespace Ziks.WebServer
             }
 
             Response.OutputStream.Close();
+        }
+
+        public override string ToString()
+        {
+            return $"filesystem {{ {RootPath} }}";
         }
     }
 }

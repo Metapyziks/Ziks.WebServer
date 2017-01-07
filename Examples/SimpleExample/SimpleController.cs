@@ -25,7 +25,7 @@ namespace SimpleExample
                 new body
                 {
                     new p {$"You said: {value}"},
-                    new p {new a( href => "history" ) {"History"}}
+                    new p {new a( href => "/simple/history" ) {"History"}}
                 }
             };
         }

@@ -53,19 +53,38 @@ namespace Ziks.WebServer
 
         private delegate void ControllerAction( Controller controller );
 
-        private struct BoundAction
+        private class BoundAction : IComparable<BoundAction>
         {
             public readonly UrlMatcher Matcher;
             public readonly bool MatchAllUrl;
+            public readonly float Priority;
             public readonly HttpMethod HttpMethod;
             public readonly ControllerAction Action;
+            
+            private readonly string _actionName;
 
-            public BoundAction( UrlMatcher matcher, bool matchAllUrl, HttpMethod httpMethod, ControllerAction action )
+            public BoundAction( UrlMatcher matcher, bool matchAllUrl, float priority,
+                HttpMethod httpMethod, ControllerAction action, string name )
             {
                 Matcher = matcher;
                 MatchAllUrl = matchAllUrl;
+                Priority = priority;
                 HttpMethod = httpMethod;
                 Action = action;
+                
+                _actionName = name;
+            }
+
+            public int CompareTo( BoundAction other )
+            {
+                var compared = Matcher.CompareTo( other.Matcher );
+                if ( compared != 0 ) return compared;
+                return Priority > other.Priority ? 1 : Priority < other.Priority ? -1 : 0;
+            }
+
+            public override string ToString()
+            {
+                return $"{Matcher} => {_actionName}";
             }
         }
 
@@ -245,13 +264,16 @@ namespace Ziks.WebServer
                 foreach ( var attrib in attribs )
                 {
                     var action = GenerateAction( method, attrib );
-                    var matcher = UrlMatcher.Parse( attrib.Value);
+                    var matcher = UrlMatcher.Parse( attrib.Value );
                     var httpMethod = attrib is GetAttribute ? HttpMethod.Get
                         : attrib is PostAttribute ? HttpMethod.Post : null;
 
-                    _actions.Add( new BoundAction( matcher, attrib.MatchAllUrl, httpMethod, action ) );
+                    _actions.Add( new BoundAction( matcher, attrib.MatchAllUrl,
+                        attrib.Priority, httpMethod, action, method.Name ) );
                 }
             }
+
+            _actions.Sort();
         }
 
         private static bool IsMatchingHttpMethod( HttpMethod action, HttpMethod request )

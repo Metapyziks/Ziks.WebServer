@@ -23,7 +23,7 @@ namespace Ziks.WebServer
         public Server()
         {
             Controllers = new ControllerMap( this );
-            Controllers.Add<DefaultNotFoundController>( "/" );
+            Controllers.Add<DefaultNotFoundController>( "/", DefaultNotFoundController.DefaultPriority );
 
             Components = new ComponentCollection( true );
 

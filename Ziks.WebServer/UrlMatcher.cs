@@ -122,7 +122,7 @@ namespace Ziks.WebServer
         }
     }
 
-    public abstract class UrlMatcher
+    public abstract class UrlMatcher : IComparable<UrlMatcher>
     {
         public static UrlMatcher Parse( string prefix )
         {
@@ -135,6 +135,8 @@ namespace Ziks.WebServer
         {
             return Parse( prefix );
         }
+
+        public abstract int SegmentCount { get; }
 
         public bool IsMatch( Uri uri, int startIndex = 0 ) => Match( uri, startIndex ).Success;
 
@@ -151,6 +153,11 @@ namespace Ziks.WebServer
         {
             startIndex = Match( uri, startIndex ).EndIndex;
         }
+
+        public int CompareTo( UrlMatcher other )
+        {
+            return SegmentCount - other.SegmentCount;
+        }
     }
 
     public class ConcatenatedPrefixMatcher : UrlMatcher
@@ -163,6 +170,8 @@ namespace Ziks.WebServer
             _first = first;
             _second = second;
         }
+
+        public override int SegmentCount => _first.SegmentCount + _second.SegmentCount;
 
         public override UrlMatch Match( Uri uri, int startIndex = 0 )
         {
@@ -189,10 +198,14 @@ namespace Ziks.WebServer
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Method)]
+    [AttributeUsage( AttributeTargets.Class
+        | AttributeTargets.Property
+        | AttributeTargets.Method,
+        AllowMultiple = true)]
     public class PrefixAttribute : Attribute
     {
         public string Value { get; set; }
+        public float Priority { get; set; }
 
         public PrefixAttribute( string value )
         {
@@ -232,6 +245,8 @@ namespace Ziks.WebServer
     {
         public string OriginalPrefix { get; }
         public string[] RawSegments { get; }
+
+        public override int SegmentCount => RawSegments.Length;
 
         protected PrefixMatcher( string prefix, Regex segmentRegex )
         {
