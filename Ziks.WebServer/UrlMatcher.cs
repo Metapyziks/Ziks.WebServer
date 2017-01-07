@@ -133,7 +133,7 @@ namespace Ziks.WebServer
 
         public static implicit operator UrlMatcher( string prefix )
         {
-            return new SimplePrefixMatcher( prefix );
+            return Parse( prefix );
         }
 
         public bool IsMatch( Uri uri, int startIndex = 0 ) => Match( uri, startIndex ).Success;

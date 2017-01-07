@@ -23,7 +23,8 @@ namespace Ziks.WebServer
     {
         Query,
         Form,
-        Body
+        Body,
+        Url
     }
 
     public sealed class QueryAttribute : ActionParameterAttribute
@@ -39,6 +40,11 @@ namespace Ziks.WebServer
     public sealed class BodyAttribute : ActionParameterAttribute
     {
         public BodyAttribute() : base( ActionParameterMethod.Body ) { }
+    }
+
+    public sealed class UrlAttribute : ActionParameterAttribute
+    {
+        public UrlAttribute() : base(ActionParameterMethod.Url) { }
     }
 
     internal class ControllerActionMap
@@ -132,6 +138,7 @@ namespace Ziks.WebServer
                     case ActionParameterMethod.Query: return controller.Request.QueryString[name];
                     case ActionParameterMethod.Form: return controller.HasFormData ? controller.GetFormData()[name] : null;
                     case ActionParameterMethod.Body: return controller.HasEntityBody ? controller.GetEntityBodyString() : null;
+                    case ActionParameterMethod.Url: return controller.UrlSegments[name];
                     default: return null;
                 }
             }
@@ -238,7 +245,7 @@ namespace Ziks.WebServer
                 foreach ( var attrib in attribs )
                 {
                     var action = GenerateAction( method, attrib );
-                    var matcher = new SimplePrefixMatcher( attrib.Value );
+                    var matcher = UrlMatcher.Parse( attrib.Value);
                     var httpMethod = attrib is GetAttribute ? HttpMethod.Get
                         : attrib is PostAttribute ? HttpMethod.Post : null;
 
@@ -254,11 +261,8 @@ namespace Ziks.WebServer
 
         public bool TryInvokeAction( Controller controller, HttpListenerRequest request )
         {
-            var prefixMatch = controller.UrlMatcher.Match( request.Url );
+            var prefixMatch = controller.ControllerMatcher.Match( request.Url );
             Debug.Assert( prefixMatch.Success );
-
-            var lastChar = request.Url.AbsolutePath[prefixMatch.Index + prefixMatch.Length - 1];
-            if ( lastChar == '/' ) prefixMatch = new UrlMatch( prefixMatch.Index, prefixMatch.Length - 1 );
 
             for ( var i = _actions.Count - 1; i >= 0; --i )
             {
@@ -269,7 +273,7 @@ namespace Ziks.WebServer
                 if ( !match.Success ) continue;
                 if ( bound.MatchAllUrl && match.EndIndex < request.Url.AbsolutePath.Length ) continue;
 
-                controller.SetMatchedActionUrl( match );
+                controller.SetMatchedActionUrl( bound.Matcher, match );
                 bound.Action( controller );
                 return true;
             }

@@ -32,7 +32,7 @@ namespace Ziks.WebServer
         {
             foreach ( var active in _controllers )
             {
-                if ( active.UrlMatcher != matcher ) continue;
+                if ( active.ControllerMatcher != matcher ) continue;
 
                 controller = active;
                 return true;

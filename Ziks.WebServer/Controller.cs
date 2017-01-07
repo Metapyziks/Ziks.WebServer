@@ -52,8 +52,14 @@ namespace Ziks.WebServer
 
         private UrlMatch _controllerMatch;
         private UrlMatch _actionMatch;
+        private UrlSegmentCollection _urlSegments;
 
+        public UrlMatcher ControllerMatcher { get; private set; }
+        public UrlMatcher ActionMatcher { get; private set; }
         public UrlMatcher UrlMatcher { get; private set; }
+
+        public UrlSegmentCollection UrlSegments
+            => _urlSegments ?? (_urlSegments = UrlMatcher.GetSegments( Request.Url ));
 
         public DateTime LastRequest { get; private set; }
         public bool IsAlive => true;
@@ -94,7 +100,7 @@ namespace Ziks.WebServer
 
         internal void Initialize( UrlMatcher matcher, Server server )
         {
-            UrlMatcher = matcher;
+            ControllerMatcher = matcher;
             Server = server;
             
             LastRequest = DateTime.UtcNow;
@@ -125,8 +131,9 @@ namespace Ziks.WebServer
 
             _entityBodyString = null;
             _formData = null;
+            _urlSegments = null;
 
-            _controllerMatch = UrlMatcher.Match( Request.Url );
+            _controllerMatch = ControllerMatcher.Match( Request.Url );
             _actionMatch = UrlMatch.Failure;
 
             try
@@ -140,16 +147,21 @@ namespace Ziks.WebServer
                 OnUnhandledException( e );
                 return true;
             }
+#if !DEBUG
             catch ( Exception e )
             {
                 OnUnhandledException( new ControllerActionException( Request, false, HttpStatusCode.InternalServerError, e.Message, e ) );
                 return true;
             }
+#endif
         }
 
-        internal void SetMatchedActionUrl( UrlMatch match )
+        internal void SetMatchedActionUrl( UrlMatcher matcher, UrlMatch match )
         {
             _actionMatch = match;
+            
+            ActionMatcher = matcher;
+            UrlMatcher = new ConcatenatedPrefixMatcher( ControllerMatcher, ActionMatcher );
         }
 
         protected ControllerActionException NotFoundException( bool handled = false )

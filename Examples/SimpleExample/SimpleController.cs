@@ -11,8 +11,8 @@ namespace SimpleExample
     {
         private readonly List<string> _history = new List<string>();
 
-        [Get( "/echo" )]
-        public Element Echo( string value = "nothing" )
+        [Get( "/echo/{value}" )]
+        public Element Echo( [Url] string value = "nothing" )
         {
             _history.Add( value );
 
