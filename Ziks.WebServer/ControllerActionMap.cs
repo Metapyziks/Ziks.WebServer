@@ -238,7 +238,7 @@ namespace Ziks.WebServer
                 foreach ( var attrib in attribs )
                 {
                     var action = GenerateAction( method, attrib );
-                    var matcher = new PrefixMatcher( attrib.Value );
+                    var matcher = new SimplePrefixMatcher( attrib.Value );
                     var httpMethod = attrib is GetAttribute ? HttpMethod.Get
                         : attrib is PostAttribute ? HttpMethod.Post : null;
 
