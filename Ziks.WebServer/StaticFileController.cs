@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using MimeTypes;
 
@@ -11,10 +13,19 @@ namespace Ziks.WebServer
         public const float DefaultPriority = -100f;
 
         public string RootPath { get; set; }
+        public List<string> ExtensionWhitelist { get; } = new List<string>();
 
-        public StaticFileController( string rootPath )
+        public StaticFileController( string rootPath, params string[] extensionWhitelist )
         {
             RootPath = new FileInfo( rootPath ).FullName;
+            ExtensionWhitelist.AddRange( extensionWhitelist );
+        }
+
+        private bool IsWhitelistedExtension( string ext )
+        {
+            return ExtensionWhitelist.Count == 0 ||
+                ExtensionWhitelist
+                    .Any( x => StringComparer.InvariantCultureIgnoreCase.Compare( x, ext ) == 0 );
         }
 
         [Get( MatchAllUrl = false )]
@@ -33,8 +44,13 @@ namespace Ziks.WebServer
                 ext = ".html";
                 requested = new Uri( requested, "index.html" );
             }
+            
+            if ( !IsWhitelistedExtension( ext ) ) throw NotFoundException();
 
-            var relativePath = MatchedUrl.MakeRelativeUri( requested );
+            var matched = MatchedUrl;
+            if ( !matched.AbsolutePath.EndsWith( "/" ) ) matched = new Uri( matched + "/" );
+
+            var relativePath = matched.MakeRelativeUri( requested );
             var filePath = Path.Combine( RootPath, relativePath.OriginalString );
 
             if ( !File.Exists( filePath ) ) throw NotFoundException();
