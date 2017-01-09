@@ -8,18 +8,22 @@ using System.Reflection;
 
 namespace Ziks.WebServer
 {
+    /// <summary>
+    /// Base class for attributes that specify where the value of a controller
+    /// action method parameter should be found.
+    /// </summary>
     [AttributeUsage( AttributeTargets.Parameter )]
     public abstract class ActionParameterAttribute : Attribute
     {
-        public ActionParameterMethod Method { get; }
+        internal ActionParameterMethod Method { get; }
 
-        protected ActionParameterAttribute( ActionParameterMethod method )
+        internal ActionParameterAttribute( ActionParameterMethod method )
         {
             Method = method;
         }
     }
 
-    public enum ActionParameterMethod
+    internal enum ActionParameterMethod
     {
         Query,
         Form,
@@ -27,29 +31,49 @@ namespace Ziks.WebServer
         Url
     }
 
+    /// <summary>
+    /// Attribute that specifies that a controller action parameter comes
+    /// from the query part of a request's URL.
+    /// </summary>
     public sealed class QueryAttribute : ActionParameterAttribute
     {
-        public QueryAttribute() : base(ActionParameterMethod.Query) { }
+        /// <summary>Creates a new <see cref="QueryAttribute"/>.</summary>
+        public QueryAttribute() : base( ActionParameterMethod.Query ) { }
     }
-
+    
+    /// <summary>
+    /// Attribute that specifies that a controller action parameter comes
+    /// from a field in a form submitted using POST.
+    /// </summary>
     public sealed class FormAttribute : ActionParameterAttribute
     {
+        /// <summary>Creates a new <see cref="FormAttribute"/>.</summary>
         public FormAttribute() : base( ActionParameterMethod.Form ) { }
     }
-
+    
+    /// <summary>
+    /// Attribute that specifies that a controller action parameter is the
+    /// body of a POST request.
+    /// </summary>
     public sealed class BodyAttribute : ActionParameterAttribute
     {
+        /// <summary>Creates a new <see cref="BodyAttribute"/>.</summary>
         public BodyAttribute() : base( ActionParameterMethod.Body ) { }
     }
-
+    
+    /// <summary>
+    /// Attribute that specifies that a controller action parameter comes
+    /// from a named capture in the matched URL of the action or controller.
+    /// </summary>
     public sealed class UrlAttribute : ActionParameterAttribute
     {
-        public UrlAttribute() : base(ActionParameterMethod.Url) { }
+        /// <summary>Creates a new <see cref="UrlAttribute"/>.</summary>
+        public UrlAttribute() : base( ActionParameterMethod.Url ) { }
     }
 
     internal class ControllerActionMap
     {
-        const BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        private const BindingFlags InstanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
         private delegate void ControllerAction( Controller controller );
 
@@ -57,10 +81,10 @@ namespace Ziks.WebServer
         {
             public readonly UrlMatcher Matcher;
             public readonly bool MatchAllUrl;
-            public readonly float Priority;
             public readonly HttpMethod HttpMethod;
             public readonly ControllerAction Action;
             
+            private readonly float _priority;
             private readonly string _actionName;
 
             public BoundAction( UrlMatcher matcher, bool matchAllUrl, float priority,
@@ -68,10 +92,10 @@ namespace Ziks.WebServer
             {
                 Matcher = matcher;
                 MatchAllUrl = matchAllUrl;
-                Priority = priority;
                 HttpMethod = httpMethod;
                 Action = action;
                 
+                _priority = priority;
                 _actionName = name;
             }
 
@@ -79,7 +103,7 @@ namespace Ziks.WebServer
             {
                 var compared = Matcher.CompareTo( other.Matcher );
                 if ( compared != 0 ) return compared;
-                return Priority > other.Priority ? 1 : Priority < other.Priority ? -1 : 0;
+                return _priority > other._priority ? 1 : _priority < other._priority ? -1 : 0;
             }
 
             public override string ToString()

@@ -6,7 +6,7 @@ using Ziks.WebServer.Html;
 
 namespace Ziks.WebServer.Test
 {
-    using static DocumentHelper;
+    using static HtmlDocumentHelper;
 
     [TestClass]
     public class HtmlElements

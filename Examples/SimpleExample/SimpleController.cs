@@ -4,15 +4,15 @@ using Ziks.WebServer.Html;
 
 namespace SimpleExample
 {
-    using static DocumentHelper;
+    using static HtmlDocumentHelper;
     
-    [Prefix("/simple")]
+    [Prefix( "/simple" )]
     public class SimpleController : Controller
     {
         private readonly List<string> _history = new List<string>();
 
         [Get( "/echo/{value}" )]
-        public Element Echo( [Url] string value = "nothing" )
+        public HtmlElement Echo( [Url] string value = "nothing" )
         {
             _history.Add( value );
 
@@ -31,7 +31,7 @@ namespace SimpleExample
         }
 
         [Get( "/history" )]
-        public Element History() =>
+        public HtmlElement History() =>
             new html( lang => "en" )
             {
                 new head
@@ -49,7 +49,7 @@ namespace SimpleExample
             };
 
         [Get( "/form-test" )]
-        public Element FormTest() =>
+        public HtmlElement FormTest() =>
             new html( lang => "en" )
             {
                 new head
@@ -68,7 +68,7 @@ namespace SimpleExample
             };
 
         [Post( "/form-test", Form = true )]
-        public Element FormTest( string firstName, string lastName ) =>
+        public HtmlElement FormTest( string firstName, string lastName ) =>
             new html( lang => "en" )
             {
                 new head

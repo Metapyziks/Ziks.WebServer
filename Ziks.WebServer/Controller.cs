@@ -12,16 +12,43 @@ using Ziks.WebServer.Html;
 
 namespace Ziks.WebServer
 {
-    using static DocumentHelper;
+    using static HtmlDocumentHelper;
 
+    /// <summary>
+    /// Attribute used to annotate methods that write a return value of a
+    /// particular type to a <see cref="HttpListenerResponse"/>.
+    /// </summary>
     public sealed class ResponseWriterAttribute : System.Attribute { }
 
+    /// <summary>
+    /// An exception thrown while handling a HTTP request routed to a <see cref="Controller"/>
+    /// action method.
+    /// </summary>
     public class ControllerActionException : Exception
     {
+        /// <summary>
+        /// The <see cref="HttpListenerRequest"/> that triggered the exception.
+        /// </summary>
         public HttpListenerRequest Request { get; }
+
+        /// <summary>
+        /// If false, the server will attempt to look for another <see cref="Controller"/> to
+        /// route the request to.
+        /// </summary>
         public bool RequestHandled { get; }
+
+        /// <summary>
+        /// <see cref="HttpStatusCode"/> corresponding to this exception.
+        /// </summary>
         public HttpStatusCode StatusCode { get; }
 
+        /// <summary>
+        /// Creates an exception from the given HTTP request, status code and message.
+        /// </summary>
+        /// <param name="request">HTTP request that triggered the exception.</param>
+        /// <param name="handled">If true, treat the HTTP request as handled.</param>
+        /// <param name="statusCode"><see cref="HttpStatusCode"/> corresponding to this exception.</param>
+        /// <param name="message">A message that describes the exception.</param>
         public ControllerActionException( HttpListenerRequest request, bool handled,
             HttpStatusCode statusCode, string message )
             : base( message )
@@ -31,6 +58,14 @@ namespace Ziks.WebServer
             StatusCode = statusCode;
         }
 
+        /// <summary>
+        /// Creates an exception from the given HTTP request, status code, message and inner exception.
+        /// </summary>
+        /// <param name="request">HTTP request that triggered the exception.</param>
+        /// <param name="handled">If true, treat the HTTP request as handled.</param>
+        /// <param name="statusCode"><see cref="HttpStatusCode"/> corresponding to this exception.</param>
+        /// <param name="message">A message that describes the exception.</param>
+        /// <param name="inner">The exception that caused this exception to be thrown.</param>
         public ControllerActionException( HttpListenerRequest request, bool handled,
             HttpStatusCode statusCode, string message, Exception inner )
             : base( message, inner )
@@ -41,6 +76,10 @@ namespace Ziks.WebServer
         }
     }
 
+    /// <summary>
+    /// Base class for types that contain methods for handling HTTP requests, grouped by a
+    /// common URL prefix. Controller instances will persist for each user's session.
+    /// </summary>
     public abstract class Controller
     {
         private const string FormContentType = "application/x-www-form-urlencoded";
@@ -54,30 +93,84 @@ namespace Ziks.WebServer
         private UrlMatch _actionMatch;
         private UrlSegmentCollection _urlSegments;
 
+        /// <summary>
+        /// The <see cref="UrlMatcher"/> for this <see cref="Controller"/> instance that
+        /// matched the current <see cref="Request"/>.
+        /// </summary>
         public UrlMatcher ControllerMatcher { get; private set; }
+        
+        /// <summary>
+        /// The <see cref="UrlMatcher"/> for the invoked action method that
+        /// matched the current <see cref="Request"/>.
+        /// </summary>
         public UrlMatcher ActionMatcher { get; private set; }
+
+        /// <summary>
+        /// The concatenation of <see cref="ControllerMatcher"/> and <see cref="ActionMatcher"/>.
+        /// </summary>
         public UrlMatcher UrlMatcher { get; private set; }
 
+        /// <summary>
+        /// The path segments that the URL of the currently handled request is comprised of.
+        /// </summary>
         public UrlSegmentCollection UrlSegments
             => _urlSegments ?? (_urlSegments = UrlMatcher.GetSegments( Request.Url ));
 
-        public DateTime LastRequest { get; private set; }
-        public bool IsAlive => true;
+        /// <summary>
+        /// UTC time of the last request handled by this instance.
+        /// </summary>
+        public DateTime LastRequestTime { get; private set; }
+
+        /// <summary>
+        /// If false, this controller has expired and should no longer handle requests.
+        /// </summary>
+        public virtual bool IsAlive => true;
 
         internal bool Initialized => Server != null;
 
+        /// <summary>
+        /// The <see cref="Server"/> instance that received the request being handled.
+        /// </summary>
         protected Server Server { get; private set; }
 
+        /// <summary>
+        /// The <see cref="HttpListenerRequest"/> currently being handled.
+        /// </summary>
         protected internal HttpListenerRequest Request { get; private set; }
+
+        /// <summary>
+        /// The <see cref="HttpListenerResponse"/> for the current request.
+        /// </summary>
         protected internal HttpListenerResponse Response { get; private set; }
 
+        /// <summary>
+        /// The <see cref="HttpMethod"/> for the current request.
+        /// </summary>
         protected internal HttpMethod HttpMethod { get; private set; }
+
+        /// <summary>
+        /// The <see cref="Session"/> for the current request.
+        /// </summary>
         protected internal Session Session { get; private set; }
 
+        /// <summary>
+        /// If true, the current request's <see cref="HttpMethod"/> is 'HEAD'.
+        /// </summary>
         protected bool IsHead => HttpMethod == HttpMethod.Head;
+
+        /// <summary>
+        /// If true, the current request's <see cref="HttpMethod"/> is either 'GET' or 'HEAD'.
+        /// </summary>
         protected bool IsGetOrHead => HttpMethod == HttpMethod.Get || IsHead;
+        
+        /// <summary>
+        /// If true, the current request's <see cref="HttpMethod"/> is 'POST'.
+        /// </summary>
         protected bool IsPost => HttpMethod == HttpMethod.Post;
 
+        /// <summary>
+        /// The substring of the requested URL that was matched by <see cref="ControllerMatcher"/>.
+        /// </summary>
         protected Uri MatchedUrl
         {
             get
@@ -90,9 +183,19 @@ namespace Ziks.WebServer
             }
         }
 
+        /// <summary>
+        /// If true, the current request had a body with URL encoded form data.
+        /// </summary>
         public bool HasFormData => HasEntityBody && Request.ContentType == FormContentType;
+
+        /// <summary>
+        /// If true, the current request had a body containing some data.
+        /// </summary>
         public bool HasEntityBody => Request.HasEntityBody;
 
+        /// <summary>
+        /// Base constructor for <see cref="Controller"/>.
+        /// </summary>
         protected Controller()
         {
             _actionMap = ControllerActionMap.GetActionMap( GetType() );
@@ -103,7 +206,7 @@ namespace Ziks.WebServer
             ControllerMatcher = matcher;
             Server = server;
             
-            LastRequest = DateTime.UtcNow;
+            LastRequestTime = DateTime.UtcNow;
         }
 
         internal bool Service( HttpListenerContext context, Session session )
@@ -127,7 +230,7 @@ namespace Ziks.WebServer
                 default: HttpMethod = null; break;
             }
 
-            LastRequest = DateTime.UtcNow;
+            LastRequestTime = DateTime.UtcNow;
 
             _entityBodyString = null;
             _formData = null;
@@ -164,12 +267,26 @@ namespace Ziks.WebServer
             UrlMatcher = new ConcatenatedPrefixMatcher( ControllerMatcher, ActionMatcher );
         }
 
+        /// <summary>
+        /// Helper that throws a <see cref="ControllerActionException"/> representing a 404 error.
+        /// </summary>
+        /// <param name="handled">
+        /// If false, the server will attempt to find another controller to handle the current request.
+        /// </param>
+        /// <returns>Never returns.</returns>
+        /// <exception cref="ControllerActionException">Always thrown.</exception>
         protected ControllerActionException NotFoundException( bool handled = false )
         {
-            var message = $"The requested resource was not found.";
+            const string message = "The requested resource was not found.";
             throw new ControllerActionException( Request, handled, HttpStatusCode.NotFound, message );
         }
 
+        /// <summary>
+        /// Called when an unhandled <see cref="ControllerActionException"/> is thrown.
+        ///
+        /// The default implementation will write a simple HTML response describing the error.
+        /// </summary>
+        /// <param name="e">The exception that was thrown.</param>
         protected virtual void OnUnhandledException( ControllerActionException e )
         {
             Response.StatusCode = (int) e.StatusCode;
@@ -194,8 +311,12 @@ namespace Ziks.WebServer
             } );
         }
 
+        /// <summary>
+        /// Response writer for action methods that return an <see cref="HtmlElement"/>.
+        /// </summary>
+        /// <param name="document"><see cref="HtmlElement"/> to be written.</param>
         [ResponseWriter]
-        protected virtual void OnServiceHtml( Element document )
+        protected virtual void OnServiceHtml( HtmlElement document )
         {
             Response.ContentType = MimeTypeMap.GetMimeType( ".html" );
 
@@ -210,6 +331,10 @@ namespace Ziks.WebServer
             }
         }
         
+        /// <summary>
+        /// Response writer for action methods that return a <see cref="JToken"/>.
+        /// </summary>
+        /// <param name="token"><see cref="JToken"/> to be written.</param>
         [ResponseWriter]
         protected virtual void OnServiceJson( JToken token )
         {
@@ -221,6 +346,10 @@ namespace Ziks.WebServer
             }
         }
         
+        /// <summary>
+        /// Response writer for action methods that return a <see cref="string"/>.
+        /// </summary>
+        /// <param name="text"><see cref="string"/> to be written.</param>
         [ResponseWriter]
         protected virtual void OnServiceText( string text )
         {
@@ -232,6 +361,10 @@ namespace Ziks.WebServer
             }
         }
 
+        /// <summary>
+        /// Gets a <see cref="NameValueCollection"/> for a URL encoded form included
+        /// in the current request body.
+        /// </summary>
         public NameValueCollection GetFormData()
         {
             if ( _formData != null ) return _formData;
@@ -242,6 +375,9 @@ namespace Ziks.WebServer
             return _formData;
         }
 
+        /// <summary>
+        /// Gets the entire body sent in the current request as a string.
+        /// </summary>
         public string GetEntityBodyString()
         {
             if ( _entityBodyString != null ) return _entityBodyString;

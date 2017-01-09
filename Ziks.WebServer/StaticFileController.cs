@@ -8,6 +8,7 @@ using MimeTypes;
 
 namespace Ziks.WebServer
 {
+    [DefaultPriority( DefaultPriority )]
     public class StaticFileController : Controller
     {
         public const float DefaultPriority = -100f;

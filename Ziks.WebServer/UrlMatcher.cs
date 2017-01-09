@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace Ziks.WebServer
 {
-    public struct UrlMatch
+    internal struct UrlMatch
     {
         public static readonly UrlMatch Failure = new UrlMatch( 0, -1 );
 
@@ -87,7 +87,7 @@ namespace Ziks.WebServer
             }
         }
 
-        public int GetFirstIndex( UrlMatch match )
+        internal int GetFirstIndex( UrlMatch match )
         {
             if ( Count == 0 ) return -1;
             for ( var i = 0; i < _segments.Length; ++i )
@@ -100,7 +100,7 @@ namespace Ziks.WebServer
             return -1;
         }
 
-        public int GetLastIndex( UrlMatch match )
+        internal int GetLastIndex( UrlMatch match )
         {
             if ( Count == 0 ) return -1;
             for ( var i = _segments.Length - 1; i >= 0; --i )
@@ -140,7 +140,7 @@ namespace Ziks.WebServer
 
         public bool IsMatch( Uri uri, int startIndex = 0 ) => Match( uri, startIndex ).Success;
 
-        public abstract UrlMatch Match( Uri uri, int startIndex = 0 );
+        internal abstract UrlMatch Match( Uri uri, int startIndex = 0 );
 
         public UrlSegmentCollection GetSegments( Uri uri, int startIndex = 0 )
         {
@@ -160,7 +160,7 @@ namespace Ziks.WebServer
         }
     }
 
-    public class ConcatenatedPrefixMatcher : UrlMatcher
+    internal class ConcatenatedPrefixMatcher : UrlMatcher
     {
         private readonly UrlMatcher _first;
         private readonly UrlMatcher _second;
@@ -198,50 +198,7 @@ namespace Ziks.WebServer
         }
     }
 
-    [AttributeUsage( AttributeTargets.Class
-        | AttributeTargets.Property
-        | AttributeTargets.Method,
-        AllowMultiple = true)]
-    public class PrefixAttribute : Attribute
-    {
-        public string Value { get; set; }
-        public float Priority { get; set; }
-
-        public PrefixAttribute( string value )
-        {
-            Value = value;
-        }
-    }
-
-    public abstract class ControllerActionAttribute : PrefixAttribute
-    {
-        public bool MatchAllUrl { get; set; } = true;
-
-        protected ControllerActionAttribute( string prefix = "/" )
-            : base ( prefix ) { }
-
-        public abstract ActionParameterMethod DefaultParameterMethod { get; }
-    }
-
-    public class GetAttribute : ControllerActionAttribute
-    {
-        public override ActionParameterMethod DefaultParameterMethod => ActionParameterMethod.Query;
-
-        public GetAttribute( string prefix = "/" )
-            : base ( prefix ) { }
-    }
-
-    public class PostAttribute : ControllerActionAttribute
-    {
-        public bool Form { get; set; } = true;
-        
-        public override ActionParameterMethod DefaultParameterMethod => Form ? ActionParameterMethod.Form : ActionParameterMethod.Query;
-
-        public PostAttribute( string prefix = "/" )
-            : base ( prefix ) { }
-    }
-
-    public abstract class PrefixMatcher : UrlMatcher
+    internal abstract class PrefixMatcher : UrlMatcher
     {
         public string OriginalPrefix { get; }
         public string[] RawSegments { get; }
@@ -311,7 +268,7 @@ namespace Ziks.WebServer
         }
     }
 
-    public class SimplePrefixMatcher : PrefixMatcher
+    internal class SimplePrefixMatcher : PrefixMatcher
     {
         private static readonly Regex _sSimplePrefixRegex
             = new Regex( @"^((/(?<segment>[~a-z0-9_.-]+))+|/)?$",
@@ -326,7 +283,7 @@ namespace Ziks.WebServer
             : base( prefix, _sSimplePrefixRegex ) { }
     }
 
-    public class CapturingPrefixMatcher : PrefixMatcher
+    internal class CapturingPrefixMatcher : PrefixMatcher
     {
         private static readonly Regex _sCapturingPrefixRegex
             = new Regex( @"^((/(?<segment>[~a-z0-9_.-]+|\{[a-z_][a-z0-9_]*\}))+|/)?$",
