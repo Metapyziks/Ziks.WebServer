@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace Ziks.WebServer
 {
-    public class Server : IComponentContainer
+    /// <summary>
+    /// Wraps a <see cref="HttpListener"/> with a request routing system to methods in instances
+    /// of <see cref="Controller"/>. Also keeps track of client sessions, so that <see cref="Controller"/>
+    /// instances are persistent over multiple requests by the same client.
+    /// </summary>
+    public sealed class Server : IComponentContainer
     {
         private readonly HttpListener _listener = new HttpListener();
 
@@ -15,11 +20,27 @@ namespace Ziks.WebServer
         private bool _running;
         private TaskCompletionSource<bool> _stopEvent;
 
+        /// <summary>
+        /// Gets the <see cref="Uri"/> prefixes handled by the <see cref="HttpListener"/> wrapped
+        /// by this instance.
+        /// </summary>
         public HttpListenerPrefixCollection Prefixes => _listener.Prefixes;
 
+        /// <summary>
+        /// Gets the mapping of <see cref="UrlMatcher"/>s to <see cref="Controller"/> constructors
+        /// used to route HTTP requests to <see cref="Controller"/> instances.
+        /// </summary>
         public ControllerMap Controllers { get; }
-        public ComponentCollection Components { get; }
 
+        /// <summary>
+        /// Gets a collection of components that can be used to provide interface implementations
+        /// for use by <see cref="Controller"/>s.
+        /// </summary>
+        public ComponentCollection Components { get; }
+        
+        /// <summary>
+        /// Creates a new <see cref="Server"/> that initially has no URI prefixes.
+        /// </summary>
         public Server()
         {
             Controllers = new ControllerMap( this );
@@ -29,7 +50,28 @@ namespace Ziks.WebServer
 
             AppDomain.CurrentDomain.DomainUnload += (sender, e) => Stop();
         }
+        
+        /// <summary>
+        /// Creates a new <see cref="Server"/> that will listen for incoming HTTP requests on the
+        /// given port.
+        /// </summary>
+        /// <param name="port">Port to listen for HTTP requests on.</param>
+        public Server( int port )
+        {
+            Controllers = new ControllerMap( this );
+            Controllers.Add<DefaultNotFoundController>( "/", DefaultNotFoundController.DefaultPriority );
 
+            Components = new ComponentCollection( true );
+
+            AppDomain.CurrentDomain.DomainUnload += (sender, e) => Stop();
+
+            Prefixes.Add( $"http://+:{port}/" );
+        }
+
+        /// <summary>
+        /// Start the <see cref="HttpListener"/>. To handle incoming requests, either repeatedly
+        /// call <see cref="HandleRequest()"/> or call <see cref="Run"/> once.
+        /// </summary>
         public void Start()
         {
             if ( _running ) return;
@@ -39,20 +81,43 @@ namespace Ziks.WebServer
 
             _listener.Start();
         }
+        
+        /// <summary>
+        /// Blocking method that either handles an individual incoming HTTP request and returns true,
+        /// or aborts and returns false if the server was stopped.
+        /// </summary>
+        /// <returns>True if a request was handled, or false if the server was stopped.</returns>
+        public bool HandleRequest()
+        {
+            var task = HandleRequestAsync();
+            task.Wait();
+            return task.Result;
+        }
 
+        /// <summary>
+        /// Asynchronously handles an individual incoming HTTP request, or aborts if the server was
+        /// stopped.
+        /// </summary>
+        /// <returns>True if a request was handled, or false if the server was stopped.</returns>
+        public async Task<bool> HandleRequestAsync()
+        {
+            var contextTask = _listener.GetContextAsync();
+            await Task.WhenAny( contextTask, _stopEvent.Task );
+
+            if ( !contextTask.IsCompleted ) return false;
+
+            OnGetContext( contextTask.Result );
+            return true;
+        }
+
+        /// <summary>
+        /// Start the <see cref="HttpListener"/> and enter a loop listening for new requests.
+        /// This will block until a call to <see cref="Stop"/> occurs.
+        /// </summary>
         public void Run()
         {
             Start();
-
-            while ( true )
-            {
-                var contextTask = _listener.GetContextAsync();
-                Task.WhenAny( contextTask, _stopEvent.Task ).Wait();
-
-                if ( !contextTask.IsCompleted ) break;
-
-                OnGetContext( contextTask.Result );
-            }
+            while ( HandleRequest() ) { }
         }
 
         private void OnGetContext( HttpListenerContext context )
@@ -74,6 +139,9 @@ namespace Ziks.WebServer
             if ( matched == null ) throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Stops the wrapped <see cref="HttpListener"/>.
+        /// </summary>
         public void Stop()
         {
             if ( !_running ) return;

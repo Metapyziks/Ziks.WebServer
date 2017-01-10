@@ -22,8 +22,16 @@ namespace Ziks.WebServer
         }
     }
 
+    /// <summary>
+    /// Contains an indexable sequence of URL path segments from a parsed
+    /// URL. Can also be indexed by capture names in the case of a capturing
+    /// URL prefix matcher being used (see <see cref="UrlMatcher.Parse"/>).
+    /// </summary>
     public sealed class UrlSegmentCollection
     {
+        /// <summary>
+        /// An empty <see cref="UrlSegmentCollection"/>.
+        /// </summary>
         public static UrlSegmentCollection Empty { get; } = new UrlSegmentCollection();
 
         [ThreadStatic]
@@ -32,9 +40,16 @@ namespace Ziks.WebServer
         private readonly string _absolutePath;
         private readonly UrlMatch[] _segments;
         private string[] _names;
-
+        
+        /// <summary>
+        /// Creates a new empty <see cref="UrlSegmentCollection"/>.
+        /// </summary>
         public UrlSegmentCollection() { }
 
+        /// <summary>
+        /// Creates a new <see cref="UrlSegmentCollection"/> parsed from the given URL.
+        /// </summary>
+        /// <param name="uri">URL to parse.</param>
         public UrlSegmentCollection( Uri uri )
         {
             _absolutePath = uri.AbsolutePath;
@@ -60,8 +75,16 @@ namespace Ziks.WebServer
             }
         }
 
+        /// <summary>
+        /// Number of segments this collection contains.
+        /// </summary>
         public int Count => _segments == null ? 0 : _segments.Length;
 
+        /// <summary>
+        /// Gets a segment from this collection by numerical index.
+        /// Index must be at least 0, and less than <see cref="Count"/>.
+        /// </summary>
+        /// <param name="index">Segment index to retrieve.</param>
         public string this[ int index ]
         {
             get
@@ -71,6 +94,13 @@ namespace Ziks.WebServer
             }
         }
 
+        /// <summary>
+        /// Gets a segment from this collection by captured segment name. Only
+        /// applicable for names specified by a capturing URL matcher.
+        /// </summary>
+        /// <param name="name">Captured segment name.</param>
+        /// <exception cref="ArgumentNullException">If <paramref name="name"/> is null.</exception>
+        /// <exception cref="ArgumentException">If no captures exist with the given name.</exception>
         public string this[ string name ]
         {
             get
@@ -122,8 +152,34 @@ namespace Ziks.WebServer
         }
     }
 
+    /// <summary>
+    /// Base class for types that test if a given <see cref="Uri"/> matches some condition. Used
+    /// for routing HTTP requests to action methods in <see cref="Controller"/> instances.
+    /// </summary>
     public abstract class UrlMatcher : IComparable<UrlMatcher>
     {
+        /// <summary>
+        /// Parses a URL prefix to a URL prefix matcher. Path segments can be either plain strings or
+        /// named capture groups (see examples).
+        /// </summary>
+        /// <example>
+        /// Simple prefix matching URLs starting with "/foo/bar":
+        /// 
+        /// <code>var matcher = UrlMatcher.Parse("/foo/bar");</code>
+        /// </example>
+        /// <example>
+        /// Simple prefix matching all URLs:
+        /// 
+        /// <code>var matcher = UrlMatcher.Parse("/");</code>
+        /// </example>
+        /// <example>
+        /// Capturing prefix matching URLs starting with "/foo/bar", where the third
+        /// URL segment matched is assigned the name "example":
+        /// 
+        /// <code>var matcher = UrlMatcher.Parse("/foo/bar/{example}");</code>
+        /// </example>
+        /// <param name="prefix">URL prefix to match. See examples.</param>
+        /// <exception cref="Exception">Thrown if the prefix string is not well formed.</exception>
         public static UrlMatcher Parse( string prefix )
         {
             if ( SimplePrefixMatcher.IsValidPrefix( prefix ) ) return new SimplePrefixMatcher( prefix );
@@ -131,17 +187,38 @@ namespace Ziks.WebServer
             throw new Exception( "Prefix string is badly formed." );
         }
 
+        /// <summary>
+        /// Implicit conversion from a <see cref="string"/> to <see cref="UrlMatcher"/>. Implemented
+        /// with a call to <see cref="Parse"/>.
+        /// </summary>
+        /// <param name="prefix">Prefix string to parse and convert.</param>
         public static implicit operator UrlMatcher( string prefix )
         {
             return Parse( prefix );
         }
 
+        /// <summary>
+        /// The number of segments that this matcher attempts to match, used for sorting matchers.
+        /// </summary>
         public abstract int SegmentCount { get; }
 
+        /// <summary>
+        /// Tests the given URL to see if its <see cref="Uri.AbsolutePath"/> matches the condition of this
+        /// matcher, with an optional offset to start matching from.
+        /// </summary>
+        /// <param name="uri">URL to attempt to match.</param>
+        /// <param name="startIndex">Index to start matching from.</param>
+        /// <returns>True if the URL matches the condition of this matcher.</returns>
         public bool IsMatch( Uri uri, int startIndex = 0 ) => Match( uri, startIndex ).Success;
 
         internal abstract UrlMatch Match( Uri uri, int startIndex = 0 );
 
+        /// <summary>
+        /// Parses the given URL into segments, and if this matcher has any named captures specified
+        /// it adds them to the collection to be indexed.
+        /// </summary>
+        /// <param name="uri">URL to parse and match.</param>
+        /// <param name="startIndex">Index to start matching from.</param>
         public UrlSegmentCollection GetSegments( Uri uri, int startIndex = 0 )
         {
             var segments = new UrlSegmentCollection( uri );
@@ -154,6 +231,10 @@ namespace Ziks.WebServer
             startIndex = Match( uri, startIndex ).EndIndex;
         }
 
+        /// <summary>
+        /// Compares two <see cref="UrlMatcher"/>s based on their <see cref="SegmentCount"/>.
+        /// </summary>
+        /// <param name="other">Other <see cref="UrlMatcher"/> to compare to.</param>
         public int CompareTo( UrlMatcher other )
         {
             return SegmentCount - other.SegmentCount;
@@ -173,7 +254,7 @@ namespace Ziks.WebServer
 
         public override int SegmentCount => _first.SegmentCount + _second.SegmentCount;
 
-        public override UrlMatch Match( Uri uri, int startIndex = 0 )
+        internal override UrlMatch Match( Uri uri, int startIndex = 0 )
         {
             var first = _first.Match( uri, startIndex );
             if ( !first.Success ) return UrlMatch.Failure;
@@ -240,7 +321,7 @@ namespace Ziks.WebServer
             return true;
         }
 
-        public override UrlMatch Match( Uri uri, int startIndex = 0 )
+        internal override UrlMatch Match( Uri uri, int startIndex = 0 )
         {
             var absolute = uri.AbsolutePath;
             var matchedIndex = startIndex;
