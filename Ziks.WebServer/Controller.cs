@@ -84,14 +84,14 @@ namespace Ziks.WebServer
     {
         private const string FormContentType = "application/x-www-form-urlencoded";
 
-        private readonly ControllerActionMap _actionMap;
-
         private string _entityBodyString;
         private NameValueCollection _formData;
 
         private UrlMatch _controllerMatch;
         private UrlMatch _actionMatch;
         private UrlSegmentCollection _urlSegments;
+
+        internal ControllerActionMap ActionMap { get; }
 
         /// <summary>
         /// The <see cref="UrlMatcher"/> for this <see cref="Controller"/> instance that
@@ -198,7 +198,7 @@ namespace Ziks.WebServer
         /// </summary>
         protected Controller()
         {
-            _actionMap = ControllerActionMap.GetActionMap( GetType() );
+            ActionMap = ControllerActionMap.GetActionMap( GetType() );
         }
 
         internal void Initialize( UrlMatcher matcher, Server server )
@@ -241,7 +241,7 @@ namespace Ziks.WebServer
 
             try
             {
-                return _actionMap.TryInvokeAction( this, context.Request );
+                return ActionMap.TryInvokeAction( this, context.Request );
             }
             catch ( ControllerActionException e )
             {

@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="HtmlElements.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResponseWriters.cs" />
     <Compile Include="UrlMatchers.cs" />
   </ItemGroup>
   <ItemGroup>

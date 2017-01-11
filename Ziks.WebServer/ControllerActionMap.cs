@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Reflection;
 
 namespace Ziks.WebServer
@@ -152,7 +154,186 @@ namespace Ziks.WebServer
             }
         }
 
-        private MethodInfo GetResponseWriter( Type responseType )
+        /// <remarks>
+        /// From http://stackoverflow.com/a/30081250
+        /// </remarks>
+        private static bool HasImplicitConversion( Type source, Type destination )
+        {
+            var sourceCode = Type.GetTypeCode( source );
+            var destinationCode = Type.GetTypeCode( destination );
+            switch ( sourceCode )
+            {
+                case TypeCode.SByte:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Int16:
+                        case TypeCode.Int32:
+                        case TypeCode.Int64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Byte:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Int16:
+                        case TypeCode.UInt16:
+                        case TypeCode.Int32:
+                        case TypeCode.UInt32:
+                        case TypeCode.Int64:
+                        case TypeCode.UInt64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Int16:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Int32:
+                        case TypeCode.Int64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.UInt16:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Int32:
+                        case TypeCode.UInt32:
+                        case TypeCode.Int64:
+                        case TypeCode.UInt64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Int32:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Int64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.UInt32:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.UInt32:
+                        case TypeCode.UInt64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Char:
+                    switch ( destinationCode )
+                    {
+                        case TypeCode.UInt16:
+                        case TypeCode.Int32:
+                        case TypeCode.UInt32:
+                        case TypeCode.Int64:
+                        case TypeCode.UInt64:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
+                            return true;
+                    }
+                    return false;
+                case TypeCode.Single:
+                    return (destinationCode == TypeCode.Double);
+            }
+            return false;
+        }
+
+        private static bool CanUseResponseWriter( Type paramType, Type returnType, out int separation )
+        {
+            const int typeParamSeparation = 1;
+            const int implicitConversionSeparation = 1;
+            const int inheritanceSeparation = 256;
+
+            separation = 0;
+
+            if ( paramType == returnType )
+            {
+                return true;
+            }
+
+            if ( returnType.IsValueType && paramType.IsValueType && HasImplicitConversion( returnType, paramType ) )
+            {
+                separation += implicitConversionSeparation;
+                return true;
+            }
+
+            if ( paramType.ContainsGenericParameters && returnType.IsConstructedGenericType && returnType.GetGenericTypeDefinition() == paramType.GetGenericTypeDefinition() )
+            {
+                try
+                {
+                    var returnTypeParams = returnType.GetGenericArguments();
+                    var paramTypeParams = paramType.GetGenericArguments();
+
+                    for ( var i = 0; i < paramTypeParams.Length; ++i )
+                    {
+                        if ( !paramTypeParams[i].IsGenericParameter )
+                        {
+                            if ( paramTypeParams[i] != returnTypeParams[i] ) return false;
+                            continue;
+                        }
+
+                        paramTypeParams[i] = returnTypeParams[i];
+                        separation += typeParamSeparation;
+                    }
+
+                    var generic = paramType.GetGenericTypeDefinition().MakeGenericType( paramTypeParams );
+                    if ( generic.IsAssignableFrom( returnType ) ) return true;
+                }
+                catch { /* Jon Skeet said this was okay */ }
+            }
+
+            if ( returnType.BaseType == null ) return false;
+            if ( !CanUseResponseWriter( paramType, returnType.BaseType, out separation ) ) return false;
+
+            separation += inheritanceSeparation;
+            return true;
+        }
+
+        private bool TryExtendWriterCache( Type responseType, out MethodInfo action )
+        {
+            var bestScore = int.MaxValue;
+            action = null;
+
+            foreach ( var pair in _writerCache )
+            {
+                int score;
+                if ( !CanUseResponseWriter( pair.Key, responseType, out score ) || score >= bestScore ) continue;
+
+                bestScore = score;
+                action = pair.Value;
+            }
+
+            return action != null;
+        }
+
+        internal MethodInfo GetResponseWriter( Type responseType )
         {
             if ( responseType == typeof (void) )
             {
@@ -167,7 +348,8 @@ namespace Ziks.WebServer
 
             MethodInfo action;
             if ( _writerCache.TryGetValue( responseType, out action ) ) return action;
-                
+            if ( TryExtendWriterCache( responseType, out action ) ) return action;
+
             throw new NotImplementedException(
                 $"No response writer implemented for values of type {responseType}" );
         }
@@ -267,10 +449,17 @@ namespace Ziks.WebServer
                 queryParsers[i] = GenerateParameterParser( parameters[i], defaultMethod, controllerParam );
             }
 
-            var call = Expression.Call( convertedController, method, queryParsers );
+            Expression call = Expression.Call( convertedController, method, queryParsers );
 
             if ( responseWriter != null )
             {
+                var paramType = responseWriter.GetParameters()[0].ParameterType;
+
+                if ( !paramType.IsAssignableFrom( method.ReturnType ) || paramType.IsByRef && method.ReturnType.IsValueType )
+                {
+                    call = Expression.Convert( call, paramType );
+                }
+
                 call = Expression.Call( convertedController, responseWriter, call );
             }
 
