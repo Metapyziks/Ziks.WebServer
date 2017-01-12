@@ -48,7 +48,7 @@ namespace Ziks.WebServer.Html
         /// </summary>
         public override string ToString()
         {
-            return $"{Name}=\"{HttpUtility.HtmlAttributeEncode( Value.ToString() )}\"";
+            return Value == null ? Name : $"{Name}=\"{HttpUtility.HtmlAttributeEncode( Value.ToString() )}\"";
         }
 
         /// <summary>
@@ -218,7 +218,8 @@ namespace Ziks.WebServer.Html
 
             foreach ( var expression in attribs )
             {
-                Add( new HtmlAttribute( expression.Parameters[0].Name, expression.Compile()( null ) ) );
+                var attribName = expression.Parameters[0].Name.Replace( '_', '-' );
+                Add( new HtmlAttribute( attribName, expression.Compile()( null ) ) );
             }
         }
 
