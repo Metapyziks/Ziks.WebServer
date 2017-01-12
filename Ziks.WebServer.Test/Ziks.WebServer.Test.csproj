@@ -50,6 +50,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="ContainerHtmlElements.cs" />
     <Compile Include="HtmlElements.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ResponseWriters.cs" />

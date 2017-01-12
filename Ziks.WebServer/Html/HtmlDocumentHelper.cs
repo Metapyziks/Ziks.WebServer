@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace Ziks.WebServer.Html
@@ -100,6 +101,24 @@ namespace Ziks.WebServer.Html
 
         public class html : ContainerHtmlElement
         {
+            public override string Text
+            {
+                get { return string.Join( " ", Children.OfType<body>().Select( x => x.Text ) ); }
+                set
+                {
+                    var bodies = Children.OfType<body>().ToArray();
+                    if ( bodies.Count() == 1 )
+                    {
+                        bodies.First().Text = value;
+                    }
+                    else
+                    {
+                        foreach ( var body in bodies ) Remove( body );
+                        Add( new body {value} );
+                    }
+                }
+            }
+
             public html( params Expression<AttribFunc>[] attribs ) : base( "html", attribs ) { }
         }
         

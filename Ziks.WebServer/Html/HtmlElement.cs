@@ -231,6 +231,23 @@ namespace Ziks.WebServer.Html
             _attributes.Add( attrib );
         }
 
+        /// <summary>
+        /// Removes a <see cref="HtmlAttribute"/> from this element.
+        /// </summary>
+        /// <param name="attrib"><see cref="HtmlAttribute"/> to remove.</param>
+        public void Remove( HtmlAttribute attrib )
+        {
+            _attributes.Remove( attrib );
+        }
+
+        /// <summary>
+        /// Removes all <see cref="HtmlAttribute"/>s from this element.
+        /// </summary>
+        public void ClearAttributes()
+        {
+            _attributes.Clear();
+        }
+
         IEnumerator IEnumerable.GetEnumerator()
         {
             throw new NotImplementedException();
@@ -300,6 +317,32 @@ namespace Ziks.WebServer.Html
         internal virtual bool AllowIndentation => true;
         internal virtual bool Verbatim => false;
         internal override bool SuggestNewlineWhenSerialized => true;
+
+        /// <summary>
+        /// Helper property to get or set the text value contained in a <see cref="ContainerHtmlElement"/>.
+        /// </summary>
+        public virtual string Text
+        {
+            get
+            {
+                return string.Join( " ", _children
+                    .Select( x => x is StringHtmlElement ? x.ToString()
+                        : x is EntityHtmlElement ? HttpUtility.HtmlDecode( x.ToString() )
+                        : x is ContainerHtmlElement ? ((ContainerHtmlElement) x).Text
+                        : "" ) );
+            }
+            set
+            {
+                if ( _children.Count == 1 && _children[0] is StringHtmlElement )
+                {
+                    ((StringHtmlElement) _children[0]).Value = value;
+                    return;
+                }
+
+                _children.Clear();
+                _children.Add( new StringHtmlElement( value ) );
+            }
+        }
         
         /// <summary>
         /// Creates a new <see cref="ContainerHtmlElement"/> with the given name and set of attributes.
@@ -322,6 +365,23 @@ namespace Ziks.WebServer.Html
         public void Add( HtmlElement htmlElement )
         {
             _children.Add( htmlElement );
+        }
+
+        /// <summary>
+        /// Removes the given child element from this instance.
+        /// </summary>
+        /// <param name="htmlElement">Child element to remove.</param>
+        public void Remove( HtmlElement htmlElement )
+        {
+            _children.Remove( htmlElement );
+        }
+
+        /// <summary>
+        /// Removes all child elements from this instance.
+        /// </summary>
+        public void ClearChildren()
+        {
+            _children.Clear();
         }
         
         /// <summary>
