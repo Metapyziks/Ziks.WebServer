@@ -494,6 +494,11 @@ namespace Ziks.WebServer
             return action == request || action == HttpMethod.Get && request == HttpMethod.Head;
         }
 
+        private static bool IsMatchingAllUrl( UrlMatch match, Uri uri )
+        {
+            return match.EndIndex == uri.AbsolutePath.TrimEnd( '/' ).Length;
+        }
+
         public bool TryInvokeAction( Controller controller, HttpListenerRequest request )
         {
             var prefixMatch = controller.ControllerMatcher.Match( request.Url );
@@ -506,7 +511,7 @@ namespace Ziks.WebServer
 
                 var match = bound.Matcher.Match( request.Url, prefixMatch.EndIndex );
                 if ( !match.Success ) continue;
-                if ( bound.MatchAllUrl && match.EndIndex < request.Url.AbsolutePath.Length ) continue;
+                if ( bound.MatchAllUrl && !IsMatchingAllUrl( match, request.Url ) ) continue;
 
                 controller.SetMatchedActionUrl( bound.Matcher, match );
                 bound.Action( controller );

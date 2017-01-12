@@ -6,7 +6,7 @@ namespace SimpleExample
 {
     using static HtmlDocumentHelper;
     
-    [Prefix( "/simple" )]
+    [Prefix( "/" )]
     public class SimpleController : Controller
     {
         private readonly List<string> _history = new List<string>();
@@ -24,9 +24,9 @@ namespace SimpleExample
                 {
                     new ul
                     {
-                        new li {new a( href => "/simple/echo" ) {"Echo"}},
-                        new li {new a( href => "/simple/history" ) {"History"}},
-                        new li {new a( href => "/simple/form-test" ) {"Form Test"}}
+                        new li {new a( href => "/echo" ) {"Echo"}},
+                        new li {new a( href => "/history" ) {"History"}},
+                        new li {new a( href => "/form-test" ) {"Form Test"}}
                     }
                 }
             };
@@ -46,7 +46,7 @@ namespace SimpleExample
                 new body
                 {
                     new p {$"You said: {value}"},
-                    new p {new a( href => "/simple/history" ) {"History"}}
+                    new p {new a( href => "/history" ) {"History"}}
                 }
             };
         }
