@@ -85,14 +85,8 @@ namespace Ziks.WebServer
         /// </summary>
         /// <param name="port">Port to listen for HTTP requests on.</param>
         public Server( int port )
+            : this()
         {
-            Controllers = new ControllerMap( this );
-            Controllers.Add<DefaultNotFoundController>( "/", DefaultNotFoundController.DefaultPriority );
-
-            Components = new ComponentCollection( true );
-
-            AppDomain.CurrentDomain.DomainUnload += (sender, e) => Stop();
-
             Prefixes.Add( $"http://+:{port}/" );
         }
 
