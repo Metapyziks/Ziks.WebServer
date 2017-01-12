@@ -202,6 +202,9 @@ namespace Ziks.WebServer
         /// </summary>
         public abstract int SegmentCount { get; }
 
+        /// <summary>
+        /// Used to sort <see cref="UrlMatcher"/>s that have the same <see cref="SegmentCount"/>.
+        /// </summary>
         protected virtual float Priority => 0f;
 
         /// <summary>
