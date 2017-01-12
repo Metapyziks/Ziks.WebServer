@@ -7,6 +7,28 @@ using System.Threading.Tasks;
 namespace Ziks.WebServer
 {
     /// <summary>
+    /// Request status value returned by <see cref="Server.HandleRequest"/>.
+    /// </summary>
+    public enum HandleRequestResult
+    {
+        /// <summary>
+        /// A request was successfully handled.
+        /// </summary>
+        Success = 0,
+
+        /// <summary>
+        /// An unhandled exception occurred while handling a request.
+        /// For example, if the response stream was unexpectedly closed.
+        /// </summary>
+        UnhandledException = 1,
+
+        /// <summary>
+        /// The server was stopped while waiting for a request to handle.
+        /// </summary>
+        Stopped = 2
+    }
+
+    /// <summary>
     /// Wraps a <see cref="HttpListener"/> with a request routing system to methods in instances
     /// of <see cref="Controller"/>. Also keeps track of client sessions, so that <see cref="Controller"/>
     /// instances are persistent over multiple requests by the same client.
@@ -19,6 +41,12 @@ namespace Ziks.WebServer
 
         private bool _running;
         private TaskCompletionSource<bool> _stopEvent;
+
+        /// <summary>
+        /// Event invoked when an unhandled exception is thrown while attempting to
+        /// handle an incoming request.
+        /// </summary>
+        public event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
 
         /// <summary>
         /// Gets the <see cref="Uri"/> prefixes handled by the <see cref="HttpListener"/> wrapped
@@ -87,7 +115,7 @@ namespace Ziks.WebServer
         /// or aborts and returns false if the server was stopped.
         /// </summary>
         /// <returns>True if a request was handled, or false if the server was stopped.</returns>
-        public bool HandleRequest()
+        public HandleRequestResult HandleRequest()
         {
             var task = HandleRequestAsync();
             task.Wait();
@@ -99,15 +127,24 @@ namespace Ziks.WebServer
         /// stopped.
         /// </summary>
         /// <returns>True if a request was handled, or false if the server was stopped.</returns>
-        public async Task<bool> HandleRequestAsync()
+        public async Task<HandleRequestResult> HandleRequestAsync()
         {
             var contextTask = _listener.GetContextAsync();
-            await Task.WhenAny( contextTask, _stopEvent.Task );
 
-            if ( !contextTask.IsCompleted ) return false;
+            try
+            {
+                await Task.WhenAny( contextTask, _stopEvent.Task );
+            }
+            catch ( AggregateException e )
+            {
+                UnhandledException?.Invoke( this, new UnhandledExceptionEventArgs( e, false ) );
+                return HandleRequestResult.UnhandledException;
+            }
+
+            if ( !contextTask.IsCompleted ) return HandleRequestResult.Stopped;
 
             OnGetContext( contextTask.Result );
-            return true;
+            return HandleRequestResult.Success;
         }
 
         /// <summary>
@@ -117,7 +154,7 @@ namespace Ziks.WebServer
         public void Run()
         {
             Start();
-            while ( HandleRequest() ) { }
+            while ( HandleRequest() != HandleRequestResult.Stopped ) { }
         }
 
         private void OnGetContext( HttpListenerContext context )

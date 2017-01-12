@@ -202,6 +202,8 @@ namespace Ziks.WebServer
         /// </summary>
         public abstract int SegmentCount { get; }
 
+        protected virtual float Priority => 0f;
+
         /// <summary>
         /// Tests the given URL to see if its <see cref="Uri.AbsolutePath"/> matches the condition of this
         /// matcher, with an optional offset to start matching from.
@@ -237,7 +239,10 @@ namespace Ziks.WebServer
         /// <param name="other">Other <see cref="UrlMatcher"/> to compare to.</param>
         public int CompareTo( UrlMatcher other )
         {
-            return SegmentCount - other.SegmentCount;
+            return SegmentCount > other.SegmentCount ? 1
+                : SegmentCount < other.SegmentCount ? -1
+                : Priority > other.Priority ? 1
+                : Priority < other.Priority ? -1 : 0;
         }
     }
 
@@ -328,6 +333,7 @@ namespace Ziks.WebServer
 
             if ( RawSegments.Length == 0 )
             {
+                if ( startIndex == absolute.Length ) return new UrlMatch( startIndex, 0 );
                 if ( !MatchSegment( -1, absolute, ref matchedIndex ) ) return UrlMatch.Failure;
             }
             else
@@ -380,6 +386,8 @@ namespace Ziks.WebServer
         }
 
         private readonly string[] _captureNames;
+
+        protected override float Priority => -1f;
 
         public CapturingPrefixMatcher( string prefix )
             : base( prefix, _sCapturingPrefixRegex )

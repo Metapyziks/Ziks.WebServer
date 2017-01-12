@@ -10,6 +10,27 @@ namespace SimpleExample
     public class SimpleController : Controller
     {
         private readonly List<string> _history = new List<string>();
+        
+        [Get]
+        public HtmlElement Listing()
+        {
+            return new html( lang => "en" )
+            {
+                new head
+                {
+                    new title {"Simple Pages"}
+                },
+                new body
+                {
+                    new ul
+                    {
+                        new li {new a( href => "/simple/echo" ) {"Echo"}},
+                        new li {new a( href => "/simple/history" ) {"History"}},
+                        new li {new a( href => "/simple/form-test" ) {"Form Test"}}
+                    }
+                }
+            };
+        }
 
         [Get( "/echo/{value}" )]
         public HtmlElement Echo( [Url] string value = "nothing" )
