@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
 
 namespace Ziks.WebServer
 {
@@ -369,6 +370,18 @@ namespace Ziks.WebServer
             }
 
             // ReSharper disable UnusedMember.Local
+            public static JObject ReadJObject( Controller controller, ActionParameterMethod method, string name, JObject @default )
+            {
+                var str = GetRawValue( controller, method, name );
+                return !string.IsNullOrEmpty( str ) ? JObject.Parse( str ) : @default;
+            }
+
+            public static JArray ReadJArray( Controller controller, ActionParameterMethod method, string name, JArray @default )
+            {
+                var str = GetRawValue( controller, method, name );
+                return !string.IsNullOrEmpty( str ) ? JArray.Parse( str ) : @default;
+            }
+
             public static string ReadString( Controller controller, ActionParameterMethod method, string name, string @default )
             {
                 return GetRawValue( controller, method, name ) ?? @default;
