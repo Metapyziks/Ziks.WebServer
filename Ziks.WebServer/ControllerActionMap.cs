@@ -448,7 +448,7 @@ namespace Ziks.WebServer
             if ( method == null )
             {
                 var bodyAttrib = methodAttrib as BodyAttribute;
-                if ( bodyAttrib == null || bodyAttrib.Json )
+                if ( bodyAttrib == null || !bodyAttrib.Json )
                 {
                     throw new NotImplementedException();
                 }
