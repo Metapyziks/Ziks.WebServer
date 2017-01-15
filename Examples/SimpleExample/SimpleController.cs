@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 using Ziks.WebServer;
 using Ziks.WebServer.Html;
 
@@ -105,6 +106,38 @@ namespace SimpleExample
                         new li {$"Last name: {lastName}"}
                     },
                     new p {new a( href => "form-test" ) {"Again!"}}
+                }
+            };
+
+        public class TestPayload
+        {
+            [JsonProperty("foo")]
+            public string Foo { get; set; }
+
+            [JsonProperty("bar")]
+            public int Bar { get; set; }
+
+            public override string ToString()
+            {
+                return $"Foo: {Foo}, Bar: {Bar}";
+            }
+        }
+
+        [Post("/json-test")]
+        public HtmlElement JsonTest( [Body] TestPayload payload ) =>
+            new html( lang => "en" )
+            {
+                new head
+                {
+                    new title {"Json POST Test"}
+                },
+                new body
+                {
+                    new p {"Here's what you submitted:"},
+                    new code
+                    {
+                        payload.ToString()
+                    }
                 }
             };
     }

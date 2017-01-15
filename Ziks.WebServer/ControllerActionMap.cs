@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Reflection;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Ziks.WebServer
@@ -60,6 +61,11 @@ namespace Ziks.WebServer
     /// </summary>
     public sealed class BodyAttribute : ActionParameterAttribute
     {
+        /// <summary>
+        /// If true, the parameter is expected to be JSON encoded.
+        /// </summary>
+        public bool Json { get; set; }
+
         /// <summary>Creates a new <see cref="BodyAttribute"/>.</summary>
         public BodyAttribute() : base( ActionParameterMethod.Body ) { }
     }
@@ -382,6 +388,12 @@ namespace Ziks.WebServer
                 return !string.IsNullOrEmpty( str ) ? JArray.Parse( str ) : @default;
             }
 
+            public static object ReadJson<T>( Controller controller, ActionParameterMethod method, string name, T @default )
+            {
+                var str = GetRawValue( controller, method, name );
+                return  !string.IsNullOrEmpty( str ) ? JsonConvert.DeserializeObject( str, typeof(T) ) : @default;
+            }
+
             public static string ReadString( Controller controller, ActionParameterMethod method, string name, string @default )
             {
                 return GetRawValue( controller, method, name ) ?? @default;
@@ -433,7 +445,17 @@ namespace Ziks.WebServer
             const BindingFlags flags = BindingFlags.Static | BindingFlags.Public;
 
             var method = typeof (ParameterParsers).GetMethod( methodName, flags );
-            if ( method == null ) throw new NotImplementedException();
+            if ( method == null )
+            {
+                var bodyAttrib = methodAttrib as BodyAttribute;
+                if ( bodyAttrib == null || bodyAttrib.Json )
+                {
+                    throw new NotImplementedException();
+                }
+                
+                method = typeof (ParameterParsers).GetMethod( "ReadJson", flags );
+                method = method.MakeGenericMethod( param.ParameterType );
+            }
 
             var @default = param.HasDefaultValue ? param.DefaultValue
                 : type.IsValueType ? Activator.CreateInstance( type ) : null;
@@ -441,7 +463,13 @@ namespace Ziks.WebServer
             var methodConst = Expression.Constant( paramMethod );
             var nameConst = Expression.Constant( param.Name );
             var defaultConst = Expression.Constant( @default, type );
-            var call = Expression.Call( method, controllerParam, methodConst, nameConst, defaultConst );
+
+            Expression call = Expression.Call( method, controllerParam, methodConst, nameConst, defaultConst );
+
+            if ( method.ReturnType != param.ParameterType )
+            {
+                call = Expression.Convert( call, param.ParameterType );
+            }
 
             return call;
         }
