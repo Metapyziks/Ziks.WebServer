@@ -116,6 +116,14 @@ namespace Ziks.WebServer
             return task.Result;
         }
 
+        private static Exception ReduceException( Exception e )
+        {
+            var aggregate = e as AggregateException;
+            if ( aggregate != null ) return ReduceException( aggregate.InnerExceptions.First() );
+
+            return e.InnerException ?? e;
+        }
+
         /// <summary>
         /// Asynchronously handles an individual incoming HTTP request, or aborts if the server was
         /// stopped.
@@ -129,9 +137,9 @@ namespace Ziks.WebServer
             {
                 await Task.WhenAny( contextTask, _stopEvent.Task );
             }
-            catch ( AggregateException e )
+            catch ( Exception e )
             {
-                UnhandledException?.Invoke( this, new UnhandledExceptionEventArgs( e, false ) );
+                UnhandledException?.Invoke( this, new UnhandledExceptionEventArgs( ReduceException( e ), false ) );
                 return HandleRequestResult.UnhandledException;
             }
 
