@@ -544,7 +544,8 @@ namespace Ziks.WebServer
         {
             var prefixMatch = controller.ControllerMatcher.Match( request.Url );
             Debug.Assert( prefixMatch.Success );
-
+            
+            ControllerActionException exception = null;
             for ( var i = _actions.Count - 1; i >= 0; --i )
             {
                 var bound = _actions[i];
@@ -554,11 +555,20 @@ namespace Ziks.WebServer
                 if ( !match.Success ) continue;
                 if ( bound.MatchAllUrl && !IsMatchingAllUrl( match, request.Url ) ) continue;
 
-                controller.SetMatchedActionUrl( bound.Matcher, match );
-                bound.Action( controller );
-                return true;
+                try
+                {
+                    controller.SetMatchedActionUrl( bound.Matcher, match );
+                    bound.Action( controller );
+                    return true;
+                }
+                catch ( ControllerActionException e )
+                {
+                    if ( e.RequestHandled ) throw;
+                    if (exception == null) exception = e;
+                }
             }
 
+            if ( exception != null ) throw exception;
             return false;
         }
     }

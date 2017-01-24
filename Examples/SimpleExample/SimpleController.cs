@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Ziks.WebServer;
 using Ziks.WebServer.Html;
 
@@ -124,7 +125,7 @@ namespace SimpleExample
         }
 
         [Post("/json-test")]
-        public HtmlElement JsonTest( [Body] TestPayload payload ) =>
+        public HtmlElement JsonTest( [Body(Json = true)] TestPayload payload ) =>
             new html( lang => "en" )
             {
                 new head
@@ -140,5 +141,26 @@ namespace SimpleExample
                     }
                 }
             };
+
+        [Get("/format-test")]
+        public HtmlElement FormatTestHtml( string format )
+        {
+            if ( format != "html" ) throw NotFoundException();
+            return new html {new body {"Success: Very"}};
+        }
+        
+        [Get("/format-test")]
+        public JObject FormatTestJson( string format )
+        {
+            if ( format != "json" ) throw NotFoundException();
+            return new JObject {{"Success", "Very"}};
+        }
+        
+        [Get("/format-test")]
+        public string FormatTestText( string format )
+        {
+            if ( format != "text" ) throw NotFoundException();
+            return "Success: Very";
+        }
     }
 }
