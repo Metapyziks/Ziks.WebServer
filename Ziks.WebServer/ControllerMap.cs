@@ -73,7 +73,7 @@ namespace Ziks.WebServer
 
                 foreach ( var attrib in attribs )
                 {
-                    var matcher = UrlMatcher.Parse( attrib.Value );
+                    var matcher = UrlMatcher.Parse( attrib.Value, attrib.Extension );
                     Add( matcher, attrib.Priority, type, lambda );
                 }
             }

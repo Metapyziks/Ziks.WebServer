@@ -25,6 +25,11 @@ namespace Ziks.WebServer
         public string Value { get; set; }
 
         /// <summary>
+        /// Optional file extension that should be matched.
+        /// </summary>
+        public string Extension { get; set; }
+
+        /// <summary>
         /// Optional priority to use when sorting <see cref="UrlMatcher"/>s.
         /// </summary>
         public float Priority { get; set; } = float.NaN;
@@ -76,11 +81,6 @@ namespace Ziks.WebServer
         /// path rather than just the start of it.
         /// </summary>
         public bool MatchAllUrl { get; set; } = true;
-
-        /// <summary>
-        /// Optional file extension that should be matched.
-        /// </summary>
-        public string Extension { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="ControllerActionAttribute"/> with the given optional
