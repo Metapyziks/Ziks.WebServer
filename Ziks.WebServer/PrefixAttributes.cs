@@ -78,6 +78,11 @@ namespace Ziks.WebServer
         public bool MatchAllUrl { get; set; } = true;
 
         /// <summary>
+        /// Optional file extension that should be matched.
+        /// </summary>
+        public string Extension { get; set; }
+
+        /// <summary>
         /// Creates a new <see cref="ControllerActionAttribute"/> with the given optional
         /// URL prefix to match.
         /// </summary>

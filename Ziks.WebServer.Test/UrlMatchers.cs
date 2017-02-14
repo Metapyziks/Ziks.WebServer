@@ -94,5 +94,34 @@ namespace Ziks.WebServer.Test
             Assert.AreEqual( "test1", matcher.GetSegments( new Uri( prefix, "/foo/test1/test2/boo" ) )["bar"] );
             Assert.AreEqual( "test2", matcher.GetSegments( new Uri( prefix, "/foo/test1/test2/boo" ) )["baz"] );
         }
+        
+        [TestMethod]
+        public void Extensions1()
+        {
+            var png = UrlMatcher.Parse( "/foo/bar/{fileName}", ".png" );
+            var json = UrlMatcher.Parse( "/foo/bar/{fileName}", ".json" );
+            var any = UrlMatcher.Parse( "/foo/bar/{fileName}" );
+
+            var matchers = new[]
+            {
+                json,
+                png,
+                any
+            };
+
+            Array.Sort( matchers );
+
+            Assert.AreEqual( any, matchers[0] );
+        }
+        
+        [TestMethod]
+        public void Extensions2()
+        {
+            var png = UrlMatcher.Parse( "/foo/bar/{fileName}", ".png" );
+
+            var prefix = new Uri( "http://localhost:8080" );
+            Assert.IsTrue( png.IsMatch( new Uri( prefix, "/foo/bar/test.png" ) ) );
+            Assert.IsFalse( png.IsMatch( new Uri( prefix, "/foo/bar/test.json" ) ) );
+        }
     }
 }

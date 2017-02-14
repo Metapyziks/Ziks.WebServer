@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -179,11 +180,12 @@ namespace Ziks.WebServer
         /// <code>var matcher = UrlMatcher.Parse("/foo/bar/{example}");</code>
         /// </example>
         /// <param name="prefix">URL prefix to match. See examples.</param>
+        /// <param name="extension">Optional file extension to match.</param>
         /// <exception cref="Exception">Thrown if the prefix string is not well formed.</exception>
-        public static UrlMatcher Parse( string prefix )
+        public static UrlMatcher Parse( string prefix, string extension = null )
         {
-            if ( SimplePrefixMatcher.IsValidPrefix( prefix ) ) return new SimplePrefixMatcher( prefix );
-            if ( CapturingPrefixMatcher.IsValidPrefix( prefix ) ) return new CapturingPrefixMatcher( prefix );
+            if ( SimplePrefixMatcher.IsValidPrefix( prefix ) ) return new SimplePrefixMatcher( prefix, extension );
+            if ( CapturingPrefixMatcher.IsValidPrefix( prefix ) ) return new CapturingPrefixMatcher( prefix, extension );
             throw new Exception( "Prefix string is badly formed." );
         }
 
@@ -290,13 +292,15 @@ namespace Ziks.WebServer
     internal abstract class PrefixMatcher : UrlMatcher
     {
         public string OriginalPrefix { get; }
+        public string Extension { get; }
         public string[] RawSegments { get; }
 
-        public override int SegmentCount => RawSegments.Length;
+        public override int SegmentCount => RawSegments.Length + (string.IsNullOrEmpty( Extension ) ? 0 : 1);
 
-        protected PrefixMatcher( string prefix, Regex segmentRegex )
+        protected PrefixMatcher( string prefix, string extension, Regex segmentRegex )
         {
             OriginalPrefix = prefix;
+            Extension = extension;
             
             var match = segmentRegex.Match( prefix );
             if ( !match.Success ) throw new ArgumentException();
@@ -334,6 +338,14 @@ namespace Ziks.WebServer
             var absolute = uri.AbsolutePath;
             var matchedIndex = startIndex;
 
+            if ( !string.IsNullOrEmpty( Extension ) )
+            {
+                if ( !Extension.Equals( Path.GetExtension( absolute ), StringComparison.InvariantCultureIgnoreCase ) )
+                {
+                    return UrlMatch.Failure;
+                }
+            }
+
             if ( RawSegments.Length == 0 )
             {
                 if ( startIndex == absolute.Length ) return new UrlMatch( startIndex, 0 );
@@ -354,7 +366,7 @@ namespace Ziks.WebServer
 
         public override string ToString()
         {
-            return OriginalPrefix;
+            return OriginalPrefix + Extension;
         }
     }
 
@@ -369,8 +381,8 @@ namespace Ziks.WebServer
             return _sSimplePrefixRegex.IsMatch( str );
         }
 
-        public SimplePrefixMatcher( string prefix )
-            : base( prefix, _sSimplePrefixRegex ) { }
+        public SimplePrefixMatcher( string prefix, string extension )
+            : base( prefix, extension, _sSimplePrefixRegex ) { }
     }
 
     internal class CapturingPrefixMatcher : PrefixMatcher
@@ -392,8 +404,8 @@ namespace Ziks.WebServer
 
         protected override float Priority => -1f;
 
-        public CapturingPrefixMatcher( string prefix )
-            : base( prefix, _sCapturingPrefixRegex )
+        public CapturingPrefixMatcher( string prefix, string extension )
+            : base( prefix, extension, _sCapturingPrefixRegex )
         {
             _captureNames = new string[RawSegments.Length];
 
