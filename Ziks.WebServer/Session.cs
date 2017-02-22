@@ -48,12 +48,15 @@ namespace Ziks.WebServer
 
         internal bool TryGetController( UrlMatcher matcher, out Controller controller )
         {
-            foreach ( var active in _controllers )
+            lock ( this )
             {
-                if ( active.ControllerMatcher != matcher ) continue;
+                foreach ( var active in _controllers )
+                {
+                    if ( active.ControllerMatcher != matcher ) continue;
 
-                controller = active;
-                return true;
+                    controller = active;
+                    return true;
+                }
             }
 
             controller = null;
@@ -62,7 +65,10 @@ namespace Ziks.WebServer
 
         internal void AddController( Controller controller )
         {
-            _controllers.Add( controller );
+            lock ( this )
+            {
+                _controllers.Add( controller );
+            }
         }
     }
 }

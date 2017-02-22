@@ -128,12 +128,15 @@ namespace Ziks.WebServer
         {
             Debug.Assert( typeof (Controller).IsAssignableFrom( controllerType ) );
 
-            ControllerActionMap map;
-            if ( _sCache.TryGetValue( controllerType, out map ) ) return map;
+            lock ( _sCache )
+            {
+                ControllerActionMap map;
+                if ( _sCache.TryGetValue( controllerType, out map ) ) return map;
 
-            map = new ControllerActionMap( controllerType );
-            _sCache.Add( controllerType, map );
-            return map;
+                map = new ControllerActionMap( controllerType );
+                _sCache.Add( controllerType, map );
+                return map;
+            }
         }
 
         public Type ControllerType { get; }
@@ -144,20 +147,23 @@ namespace Ziks.WebServer
 
         private void BuildWriterCache()
         {
-            _writerCache = new Dictionary<Type, MethodInfo>();
-
-            foreach ( var method in ControllerType.GetMethods( InstanceFlags ) )
+            lock ( this )
             {
-                var attribs = method.GetCustomAttributes<ResponseWriterAttribute>( true ).AsArray();
-                if ( attribs.Length == 0 ) continue;
+                _writerCache = new Dictionary<Type, MethodInfo>();
 
-                var args = method.GetParameters();
-                Debug.Assert( args.Length == 1 );
-                
-                var type = args[0].ParameterType;
+                foreach ( var method in ControllerType.GetMethods( InstanceFlags ) )
+                {
+                    var attribs = method.GetCustomAttributes<ResponseWriterAttribute>( true ).AsArray();
+                    if ( attribs.Length == 0 ) continue;
 
-                if ( _writerCache.ContainsKey( type ) ) _writerCache[type] = method;
-                else _writerCache.Add( type, method );
+                    var args = method.GetParameters();
+                    Debug.Assert( args.Length == 1 );
+
+                    var type = args[0].ParameterType;
+
+                    if ( _writerCache.ContainsKey( type ) ) _writerCache[type] = method;
+                    else _writerCache.Add( type, method );
+                }
             }
         }
 

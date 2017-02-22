@@ -84,31 +84,38 @@ namespace Ziks.WebServer
     {
         private const string FormContentType = "application/x-www-form-urlencoded";
 
-        private string _entityBodyString;
-        private NameValueCollection _formData;
-
-        private UrlMatch _controllerMatch;
-        private UrlMatch _actionMatch;
-        private UrlSegmentCollection _urlSegments;
+        [ThreadStatic] private static string _entityBodyString;
+        [ThreadStatic] private static NameValueCollection _formData;
+        [ThreadStatic] private static UrlMatch _controllerMatch;
+        [ThreadStatic] private static UrlMatch _actionMatch;
+        [ThreadStatic] private static UrlSegmentCollection _urlSegments;
 
         internal ControllerActionMap ActionMap { get; }
+
+        [ThreadStatic] private static UrlMatcher _actionMatcher;
+        [ThreadStatic] private static UrlMatcher _urlMatcher;
+
+        [ThreadStatic] private static HttpListenerRequest _request;
+        [ThreadStatic] private static HttpListenerResponse _response;
+        [ThreadStatic] private static HttpMethod _httpMethod;
+        [ThreadStatic] private static Session _session;
 
         /// <summary>
         /// The <see cref="UrlMatcher"/> for this <see cref="Controller"/> instance that
         /// matched the current <see cref="Request"/>.
         /// </summary>
         public UrlMatcher ControllerMatcher { get; private set; }
-        
+
         /// <summary>
         /// The <see cref="UrlMatcher"/> for the invoked action method that
         /// matched the current <see cref="Request"/>.
         /// </summary>
-        public UrlMatcher ActionMatcher { get; private set; }
+        public UrlMatcher ActionMatcher => _actionMatcher;
 
         /// <summary>
         /// The concatenation of <see cref="ControllerMatcher"/> and <see cref="ActionMatcher"/>.
         /// </summary>
-        public UrlMatcher UrlMatcher { get; private set; }
+        public UrlMatcher UrlMatcher => _urlMatcher;
 
         /// <summary>
         /// The path segments that the URL of the currently handled request is comprised of.
@@ -136,22 +143,22 @@ namespace Ziks.WebServer
         /// <summary>
         /// The <see cref="HttpListenerRequest"/> currently being handled.
         /// </summary>
-        protected internal HttpListenerRequest Request { get; private set; }
+        protected internal HttpListenerRequest Request => _request;
 
         /// <summary>
         /// The <see cref="HttpListenerResponse"/> for the current request.
         /// </summary>
-        protected internal HttpListenerResponse Response { get; private set; }
+        protected internal HttpListenerResponse Response => _response;
 
         /// <summary>
         /// The <see cref="HttpMethod"/> for the current request.
         /// </summary>
-        protected internal HttpMethod HttpMethod { get; private set; }
+        protected internal HttpMethod HttpMethod => _httpMethod;
 
         /// <summary>
         /// The <see cref="Session"/> for the current request.
         /// </summary>
-        protected internal Session Session { get; private set; }
+        protected internal Session Session => _session;
 
         /// <summary>
         /// If true, the current request's <see cref="HttpMethod"/> is 'HEAD'.
@@ -214,20 +221,20 @@ namespace Ziks.WebServer
             Debug.Assert( session == Session || Session == null );
             if ( Session == null ) session.AddController( this );
 
-            Request = context.Request;
-            Response = context.Response;
-            Session = session;
+            _request = context.Request;
+            _response = context.Response;
+            _session = session;
 
             switch ( Request.HttpMethod )
             {
-                case "GET": HttpMethod = HttpMethod.Get; break;
-                case "POST": HttpMethod = HttpMethod.Post; break;
-                case "HEAD": HttpMethod = HttpMethod.Head; break;
-                case "DELETE": HttpMethod = HttpMethod.Delete; break;
-                case "OPTIONS": HttpMethod = HttpMethod.Options; break;
-                case "PUT": HttpMethod = HttpMethod.Put; break;
-                case "TRACE": HttpMethod = HttpMethod.Trace; break;
-                default: HttpMethod = null; break;
+                case "GET": _httpMethod = HttpMethod.Get; break;
+                case "POST": _httpMethod = HttpMethod.Post; break;
+                case "HEAD": _httpMethod = HttpMethod.Head; break;
+                case "DELETE": _httpMethod = HttpMethod.Delete; break;
+                case "OPTIONS": _httpMethod = HttpMethod.Options; break;
+                case "PUT": _httpMethod = HttpMethod.Put; break;
+                case "TRACE": _httpMethod = HttpMethod.Trace; break;
+                default: _httpMethod = null; break;
             }
 
             LastRequestTime = DateTime.UtcNow;
@@ -261,10 +268,10 @@ namespace Ziks.WebServer
 
         internal void SetMatchedActionUrl( UrlMatcher matcher, UrlMatch match )
         {
+            _actionMatcher = matcher;
             _actionMatch = match;
             
-            ActionMatcher = matcher;
-            UrlMatcher = new ConcatenatedPrefixMatcher( ControllerMatcher, ActionMatcher );
+            _urlMatcher = new ConcatenatedPrefixMatcher( ControllerMatcher, ActionMatcher );
         }
 
         /// <summary>

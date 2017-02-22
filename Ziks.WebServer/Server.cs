@@ -164,13 +164,16 @@ namespace Ziks.WebServer
             var guid = context.Request.GetSessionGuid();
 
             Session session;
-            if ( guid == Guid.Empty || !_sessions.TryGetValue( guid, out session ) )
+            lock ( this )
             {
-                session = new Session( context.Request.RemoteEndPoint?.Address );
-                context.Response.SetSessionGuid( session.Guid );
-                _sessions.Add( session.Guid, session );
+                if ( guid == Guid.Empty || !_sessions.TryGetValue( guid, out session ) )
+                {
+                    session = new Session( context.Request.RemoteEndPoint?.Address );
+                    context.Response.SetSessionGuid( session.Guid );
+                    _sessions.Add( session.Guid, session );
+                }
             }
-            
+
             var matched = Controllers
                 .GetMatching( session, context.Request )
                 .FirstOrDefault( matching => matching.Service( context, session ) );
