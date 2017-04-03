@@ -362,7 +362,7 @@ namespace Ziks.WebServer
 
             if ( !string.IsNullOrEmpty( Extension ) )
             {
-                if ( !Extension.Equals( Path.GetExtension( absolute ), StringComparison.InvariantCultureIgnoreCase ) )
+                if ( !absolute.EndsWith( Extension, StringComparison.InvariantCultureIgnoreCase ) )
                 {
                     return UrlMatch.Failure;
                 }
