@@ -41,6 +41,8 @@ namespace Ziks.WebServer
         private readonly string _absolutePath;
         private readonly UrlMatch[] _segments;
         private string[] _names;
+        private int[] _prefixes;
+        private int[] _postfixes;
         
         /// <summary>
         /// Creates a new empty <see cref="UrlSegmentCollection"/>.
@@ -111,7 +113,15 @@ namespace Ziks.WebServer
 
                 for ( var i = 0; i < _names.Length; ++i )
                 {
-                    if ( _names[i] == name ) return this[i];
+                    if ( _names[i] == name )
+                    {
+                        var value = this[i];
+
+                        if ( _prefixes != null ) value = value.Substring( _prefixes[i] );
+                        if ( _postfixes != null ) value = value.Substring( 0, value.Length - _postfixes[i] );
+
+                        return value;
+                    }
                 }
 
                 throw new ArgumentException();
@@ -144,12 +154,24 @@ namespace Ziks.WebServer
             return -1;
         }
 
-        internal void SetIndexName( int index, string name )
+        internal void SetIndexName( int index, string name, int prefixLength = 0, int postfixLength = 0 )
         {
             if ( index < 0 || index >= Count ) throw new IndexOutOfRangeException();
             if ( _names == null ) _names = new string[_segments.Length];
 
             _names[index] = name;
+
+            if ( prefixLength != 0 )
+            {
+                if ( _prefixes == null ) _prefixes = new int[_segments.Length];
+                _prefixes[index] = prefixLength;
+            }
+
+            if ( postfixLength != 0 )
+            {
+                if (_postfixes == null) _postfixes = new int[_segments.Length];
+                _postfixes[index] = postfixLength;
+            }
         }
     }
 
@@ -388,11 +410,11 @@ namespace Ziks.WebServer
     internal class CapturingPrefixMatcher : PrefixMatcher
     {
         private static readonly Regex _sCapturingPrefixRegex
-            = new Regex( @"^((/(?<segment>[~a-z0-9_.-]+|\{[a-z_][a-z0-9_]*\}))+|/)?$",
+            = new Regex(@"^((/(?<segment>[~a-z0-9_.-]+|[~a-z0-9_.-]*\{[a-z_][a-z0-9_]*\}[~a-z0-9_.-]*))+|/)?$",
                 RegexOptions.Compiled | RegexOptions.IgnoreCase );
 
         private static readonly Regex _sCaptureRegex
-            = new Regex( @"^\{(?<name>[a-z_][a-z0-9_]*)\}$",
+            = new Regex(@"^[~a-z0-9_.-]*\{(?<name>[a-z_][a-z0-9_]*)\}[~a-z0-9_.-]*$",
                 RegexOptions.Compiled | RegexOptions.IgnoreCase );
 
         public static bool IsValidPrefix( string str )
@@ -400,38 +422,67 @@ namespace Ziks.WebServer
             return _sCapturingPrefixRegex.IsMatch( str );
         }
 
-        private readonly string[] _captureNames;
+        private class CaptureSegment
+        {
+            public string Name;
+            public string Prefix;
+            public string Postfix;
+        }
+
+        private readonly CaptureSegment[] _captures;
 
         protected override float Priority => -1f;
 
         public CapturingPrefixMatcher( string prefix, string extension )
             : base( prefix, extension, _sCapturingPrefixRegex )
         {
-            _captureNames = new string[RawSegments.Length];
+            _captures = new CaptureSegment[RawSegments.Length];
 
             for ( var i = 0; i < RawSegments.Length; ++i )
             {
                 var match = _sCaptureRegex.Match( RawSegments[i] );
                 if ( !match.Success ) continue;
 
-                _captureNames[i] = match.Groups["name"].Value;
+                var group = match.Groups["name"];
+
+                _captures[i] = new CaptureSegment
+                {
+                    Name = group.Value,
+                    Prefix = RawSegments[i].Substring( 0, group.Index - 1 ),
+                    Postfix = RawSegments[i].Substring( group.Index + group.Length + 1 )
+                };
             }
         }
 
         protected override bool MatchSegment( int segmentIndex, string path, ref int startIndex )
         {
-            if ( _captureNames[segmentIndex] == null )
+            if (_captures[segmentIndex] == null )
             {
                 return base.MatchSegment( segmentIndex, path, ref startIndex );
             }
 
+            var capture = _captures[segmentIndex];
+
             if ( path.Length < startIndex + 2 ) return false;
             if ( path[startIndex] != '/' ) return false;
 
-            var endIndex = path.IndexOf( '/', startIndex + 1 );
+            var endIndex = path.IndexOf( '/', ++startIndex );
             if ( endIndex == -1 ) endIndex = path.Length;
 
-            startIndex = endIndex;
+            if ( endIndex - startIndex <= capture.Prefix.Length + capture.Postfix.Length ) return false;
+
+            for ( var i = 0; i < capture.Prefix.Length; ++i )
+            {
+                if ( path[startIndex++] != capture.Prefix[i] ) return false;
+            }
+
+            startIndex = endIndex - capture.Postfix.Length;
+
+            for (var i = 0; i < capture.Postfix.Length; ++i)
+            {
+                if (path[startIndex++] != capture.Postfix[i]) return false;
+            }
+
             return true;
         }
 
@@ -443,8 +494,9 @@ namespace Ziks.WebServer
 
             for ( var i = first; i <= last; ++i )
             {
-                if ( _captureNames[i - first] == null ) continue;
-                collection.SetIndexName( i, _captureNames[i - first] );
+                var capture = _captures[i - first];
+                if ( capture == null ) continue;
+                collection.SetIndexName( i, capture.Name, capture.Prefix.Length, capture.Postfix.Length );
             }
 
             startIndex = match.EndIndex;
