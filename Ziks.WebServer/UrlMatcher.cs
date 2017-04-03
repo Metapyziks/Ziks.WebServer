@@ -109,7 +109,7 @@ namespace Ziks.WebServer
             get
             {
                 if ( name == null ) throw new ArgumentNullException();
-                if ( _names == null ) throw new ArgumentException();
+                if ( _names == null ) return null;
 
                 for ( var i = 0; i < _names.Length; ++i )
                 {
@@ -124,7 +124,7 @@ namespace Ziks.WebServer
                     }
                 }
 
-                throw new ArgumentException();
+                return null;
             }
         }
 

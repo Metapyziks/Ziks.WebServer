@@ -162,5 +162,12 @@ namespace SimpleExample
             if ( format != "text" ) throw NotFoundException();
             return "Success: Very";
         }
+
+        [Get("/multi-test")]
+        [Get("/{prefix}/multi-test")]
+        public string MultiTest([Url] string prefix)
+        {
+            return $"Prefix: {prefix}";
+        }
     }
 }
