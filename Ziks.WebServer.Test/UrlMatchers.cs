@@ -94,7 +94,49 @@ namespace Ziks.WebServer.Test
             Assert.AreEqual( "test1", matcher.GetSegments( new Uri( prefix, "/foo/test1/test2/boo" ) )["bar"] );
             Assert.AreEqual( "test2", matcher.GetSegments( new Uri( prefix, "/foo/test1/test2/boo" ) )["baz"] );
         }
-        
+
+        [TestMethod]
+        public void CapturingPrefix5()
+        {
+            var png = UrlMatcher.Parse("/foo/bar/{fileName}.png");
+
+            var prefix = new Uri("http://localhost:8080");
+            Assert.IsTrue(png.IsMatch(new Uri(prefix, "/foo/bar/test.png")));
+            Assert.IsFalse(png.IsMatch(new Uri(prefix, "/foo/bar/test.json")));
+        }
+
+        [TestMethod]
+        public void CapturingPrefix6()
+        {
+            var bsp = UrlMatcher.Parse("/foo/bar/de_{fileName}.bsp");
+
+            var prefix = new Uri("http://localhost:8080");
+            Assert.IsTrue(bsp.IsMatch(new Uri(prefix, "/foo/bar/de_dust.bsp")));
+            Assert.IsFalse(bsp.IsMatch(new Uri(prefix, "/foo/bar/de_dust.nav")));
+            Assert.IsFalse(bsp.IsMatch(new Uri(prefix, "/foo/bar/cs_office.bsp")));
+        }
+
+        [TestMethod]
+        public void CapturingPrefix7()
+        {
+            var bsp = UrlMatcher.Parse("/foo/bar/{fileName}.bsp");
+
+            var prefix = new Uri("http://localhost:8080");
+            Assert.AreEqual("de_dust", bsp.GetSegments(new Uri(prefix, "/foo/bar/de_dust.bsp"))["fileName"]);
+            Assert.AreEqual("cs_office", bsp.GetSegments(new Uri(prefix, "/foo/bar/cs_office.bsp"))["fileName"]);
+        }
+
+        [TestMethod]
+        public void CapturingPrefix8()
+        {
+            var json = UrlMatcher.Parse("/{fileName}/info.json");
+
+            var prefix = new Uri("http://localhost:8080");
+            Assert.IsTrue(json.IsMatch(new Uri(prefix, "/de_dust/info.json")));
+            Assert.IsFalse(json.IsMatch(new Uri(prefix, "/info.json")));
+            Assert.IsFalse(json.IsMatch(new Uri(prefix, "/de_dust/test/info.json")));
+        }
+
         [TestMethod]
         public void Extensions1()
         {
@@ -122,37 +164,6 @@ namespace Ziks.WebServer.Test
             var prefix = new Uri( "http://localhost:8080" );
             Assert.IsTrue( png.IsMatch( new Uri( prefix, "/foo/bar/test.png" ) ) );
             Assert.IsFalse( png.IsMatch( new Uri( prefix, "/foo/bar/test.json" ) ) );
-        }
-
-        [TestMethod]
-        public void Extensions3()
-        {
-            var png = UrlMatcher.Parse("/foo/bar/{fileName}.png");
-
-            var prefix = new Uri("http://localhost:8080");
-            Assert.IsTrue(png.IsMatch(new Uri(prefix, "/foo/bar/test.png")));
-            Assert.IsFalse(png.IsMatch(new Uri(prefix, "/foo/bar/test.json")));
-        }
-
-        [TestMethod]
-        public void Extensions4()
-        {
-            var png = UrlMatcher.Parse("/foo/bar/de_{fileName}.bsp");
-
-            var prefix = new Uri("http://localhost:8080");
-            Assert.IsTrue( png.IsMatch( new Uri( prefix, "/foo/bar/de_dust.bsp" ) ) );
-            Assert.IsFalse( png.IsMatch( new Uri( prefix, "/foo/bar/de_dust.nav" ) ) );
-            Assert.IsFalse( png.IsMatch( new Uri( prefix, "/foo/bar/cs_office.bsp" ) ) );
-        }
-
-        [TestMethod]
-        public void Extensions5()
-        {
-            var png = UrlMatcher.Parse("/foo/bar/{fileName}.bsp");
-
-            var prefix = new Uri("http://localhost:8080");
-            Assert.AreEqual("de_dust", png.GetSegments(new Uri(prefix, "/foo/bar/de_dust.bsp"))["fileName"]);
-            Assert.AreEqual("cs_office", png.GetSegments(new Uri(prefix, "/foo/bar/cs_office.bsp"))["fileName"]);
         }
     }
 }
