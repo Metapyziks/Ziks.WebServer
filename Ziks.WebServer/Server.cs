@@ -145,7 +145,16 @@ namespace Ziks.WebServer
 
             if ( !contextTask.IsCompleted ) return HandleRequestResult.Stopped;
 
-            OnGetContext( contextTask.Result );
+            try
+            {
+                OnGetContext( contextTask.Result );
+            }
+            catch ( Exception e )
+            {
+                UnhandledException?.Invoke( this, new UnhandledExceptionEventArgs( ReduceException( e ), false ) );
+                return HandleRequestResult.UnhandledException;
+            }
+
             return HandleRequestResult.Success;
         }
 
